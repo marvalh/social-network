@@ -1,0 +1,5 @@
+DROP INDEX idx_group_chat_group_created;
+DROP INDEX idx_group_members_user;
+DROP INDEX idx_group_invite_invited_to;
+DROP INDEX idx_group_join_request_group;
+DROP INDEX idx_group_events_group;
