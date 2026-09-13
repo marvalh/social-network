@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	db, err := sqlite.Setup(".app/data/social_network.db", "pkg/db/migrations/sqlite")
+	db, err := sqlite.Setup("./data/social_network.db", "pkg/db/migrations/sqlite")
 	if err != nil {
 		log.Fatal(err)
 	}
