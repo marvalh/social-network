@@ -38,8 +38,8 @@ func UpgradeHandler(hub *Hub) http.HandlerFunc {
 			}
 		}
 
-		hub.Unregister(userID)
-
+		hub.Unregister(userID, conn)
+		
 		conn.Close()
 	}
 }

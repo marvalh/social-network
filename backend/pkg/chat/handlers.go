@@ -139,6 +139,22 @@ func SendGroupMessageHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			return
 		}
 
+		message := models.GroupMessage{
+			ChatID:   chatID,
+			SenderID: senderID,
+			GroupID:  groupID,
+			Content:  req.Content,
+		}
+
+		if members, err := queries.ListGroupMembers(db, groupID); err == nil {
+			for _, m := range members {
+				if m.UserID == senderID {
+					continue
+				}
+				hub.SendToUser(m.UserID, message)
+			}
+		}
+
 		helpers.SendJSON(w, http.StatusCreated, map[string]any{"chatId": chatID})
 	}
 }

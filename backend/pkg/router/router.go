@@ -30,7 +30,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("GET /api/users/{id}/follow-status", auth.RequireAuth(db, follow.GetFollowStatusHandler(db)))
 	mux.Handle("GET /api/users/{id}/followers", auth.RequireAuth(db, follow.GetFollowersHandler(db)))
 	mux.Handle("GET /api/users/{id}/following", auth.RequireAuth(db, follow.GetFollowingHandler(db)))
-	mux.Handle("POST /api/users/{id}/follow", auth.RequireAuth(db, follow.SendFollowRequestHandler(db)))
+	mux.Handle("POST /api/users/{id}/follow", auth.RequireAuth(db, follow.SendFollowRequestHandler(db, hub)))
 	mux.Handle("DELETE /api/users/{id}/follow", auth.RequireAuth(db, follow.UnfollowHandler(db)))
 	mux.Handle("POST /api/follow-requests/{requestId}/accept", auth.RequireAuth(db, follow.AcceptRequestHandler(db)))
 	mux.Handle("POST /api/follow-requests/{requestId}/decline", auth.RequireAuth(db, follow.DeclineRequestHandler(db)))
@@ -52,13 +52,13 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("GET /api/groups/{id}", auth.RequireAuth(db, groups.GetGroupHandler(db)))
 	mux.Handle("GET /api/groups/{id}/members", auth.RequireAuth(db, groups.ListGroupMembersHandler(db)))
 	mux.Handle("DELETE /api/groups/{id}/members/me", auth.RequireAuth(db, groups.LeaveGroupHandler(db)))
-	mux.Handle("POST /api/groups/{id}/invites", auth.RequireAuth(db, groups.SendInviteHandler(db)))
+	mux.Handle("POST /api/groups/{id}/invites", auth.RequireAuth(db, groups.SendInviteHandler(db, hub)))
 	mux.Handle("GET /api/groups/invites", auth.RequireAuth(db, groups.ListMyInvitesHandler(db)))
 	mux.Handle("POST /api/invites/{id}/respond", auth.RequireAuth(db, groups.RespondToInviteHandler(db)))
-	mux.Handle("POST /api/groups/{id}/join-requests", auth.RequireAuth(db, groups.RequestToJoinHandler(db)))
+	mux.Handle("POST /api/groups/{id}/join-requests", auth.RequireAuth(db, groups.RequestToJoinHandler(db, hub)))
 	mux.Handle("GET /api/groups/{id}/join-requests", auth.RequireAuth(db, groups.ListJoinRequestsHandler(db)))
 	mux.Handle("POST /api/groups/{id}/join-requests/{userId}/respond", auth.RequireAuth(db, groups.RespondToJoinRequestHandler(db)))
-	mux.Handle("POST /api/groups/{id}/events", auth.RequireAuth(db, groups.CreateEventHandler(db)))
+	mux.Handle("POST /api/groups/{id}/events", auth.RequireAuth(db, groups.CreateEventHandler(db, hub)))
 	mux.Handle("GET /api/groups/{id}/events", auth.RequireAuth(db, groups.ListGroupEventsHandler(db)))
 	mux.Handle("POST /api/events/{id}/respond", auth.RequireAuth(db, groups.RespondToEventHandler(db)))
 
@@ -80,5 +80,5 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("DELETE /api/comments/{id}/like", auth.RequireAuth(db, posts.UnlikeCommentHandler(db)))
 	mux.Handle("GET /api/images/posts/{filename}", auth.RequireAuth(db, posts.ServePostImageHandler(db)))
 
-	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+	mux.Handle("GET /uploads/avatars/{filename}", auth.RequireAuth(db, profile.ServeAvatarHandler(db)))
 }

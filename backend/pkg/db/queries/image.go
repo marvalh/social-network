@@ -17,3 +17,9 @@ func CreateImage(db *sql.DB, ownerID, path, mimeType string) (string, error) {
 	}
 	return imgID, nil
 }
+
+func GetImageOwnerByPath(db *sql.DB, path string) (string, error) {
+	var ownerID string
+	err := db.QueryRow(`SELECT owner_id FROM images WHERE path = ?`, path).Scan(&ownerID)
+	return ownerID, err
+}

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	stderrors "errors"
 	"net/http"
+	"path/filepath"
 
 	"social-network-test/pkg/auth"
 	"social-network-test/pkg/db/queries"
@@ -96,4 +97,47 @@ func avatarFilenameFromPath(path string) string {
 		return ""
 	}
 	return path[len(avatarURLPrefix):]
+}
+
+func ServeAvatarHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		viewerID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+
+		filename := filepath.Base(r.PathValue("filename"))
+		if filename == "" || filename == "." || filename == string(filepath.Separator) {
+			errors.Handle(w, r, errors.BadRequest("invalid filename"))
+			return
+		}
+
+		ownerID, err := queries.GetImageOwnerByPath(db, avatarURLPrefix+filename)
+		if err != nil {
+			errors.Handle(w, r, errors.NotFound("avatar not found"))
+			return
+		}
+
+		if ownerID != viewerID {
+			owner, err := queries.GetUserByID(db, ownerID)
+			if err != nil {
+				errors.Handle(w, r, errors.NotFound("avatar not found"))
+				return
+			}
+			if !owner.IsPublic {
+				following, err := queries.IsFollowing(db, viewerID, ownerID)
+				if err != nil {
+					errors.Handle(w, r, errors.ErrServerError)
+					return
+				}
+				if !following {
+					errors.Handle(w, r, errors.Forbidden("this profile is private"))
+					return
+				}
+			}
+		}
+
+		http.ServeFile(w, r, filepath.Join(AvatarUploadDir, filename))
+	}
 }

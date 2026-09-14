@@ -8,6 +8,8 @@ import (
 	"social-network-test/pkg/errors"
 	"social-network-test/pkg/helpers"
 	"social-network-test/pkg/models"
+	"social-network-test/pkg/notifications"
+	"social-network-test/pkg/ws"
 
 	"github.com/google/uuid"
 )
@@ -18,7 +20,7 @@ func parseID(raw string) (string, error) {
 	}
 	return raw, nil
 }
- 
+
 // priv account's data is visible only to its accepted followers
 func canViewUserData(db *sql.DB, viewerID, targetID string) (bool, error) {
 	if viewerID == targetID {
@@ -33,7 +35,7 @@ func canViewUserData(db *sql.DB, viewerID, targetID string) (bool, error) {
 	}
 	return queries.IsFollowing(db, viewerID, targetID)
 }
- 
+
 func GetFollowStatusHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		targetID, err := parseID(r.PathValue("id"))
@@ -54,7 +56,7 @@ func GetFollowStatusHandler(db *sql.DB) http.HandlerFunc {
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": status})
 	}
 }
- 
+
 func GetFollowersHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		targetID, err := parseID(r.PathValue("id"))
@@ -67,7 +69,7 @@ func GetFollowersHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrUnauthorized)
 			return
 		}
- 
+
 		canView, err := canViewUserData(db, userID, targetID)
 		if err != nil {
 			errors.Handle(w, r, errors.NotFound("user not found"))
@@ -77,7 +79,7 @@ func GetFollowersHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Forbidden("this profile is private"))
 			return
 		}
- 
+
 		users, err := queries.ListFollowers(db, targetID)
 		if err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
@@ -88,19 +90,19 @@ func GetFollowersHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
 		}
- 
+
 		response := make([]models.UserResponse, len(users))
 		for i, u := range users {
 			response[i] = u.Sanitize()
 		}
- 
+
 		helpers.SendJSON(w, http.StatusOK, map[string]any{
 			"followers": response,
 			"count":     count,
 		})
 	}
 }
- 
+
 func GetFollowingHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		targetID, err := parseID(r.PathValue("id"))
@@ -113,7 +115,7 @@ func GetFollowingHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrUnauthorized)
 			return
 		}
- 
+
 		canView, err := canViewUserData(db, userID, targetID)
 		if err != nil {
 			errors.Handle(w, r, errors.NotFound("user not found"))
@@ -123,7 +125,7 @@ func GetFollowingHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Forbidden("this profile is private"))
 			return
 		}
- 
+
 		users, err := queries.ListFollowing(db, targetID)
 		if err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
@@ -138,14 +140,14 @@ func GetFollowingHandler(db *sql.DB) http.HandlerFunc {
 		for i, u := range users {
 			response[i] = u.Sanitize()
 		}
- 
+
 		helpers.SendJSON(w, http.StatusOK, map[string]any{
 			"following": response,
 			"count":     count,
 		})
 	}
 }
- 
+
 func GetPendingRequestsHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
@@ -153,7 +155,7 @@ func GetPendingRequestsHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrUnauthorized)
 			return
 		}
- 
+
 		requests, err := queries.ListPendingRequests(db, userID)
 		if err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
@@ -164,15 +166,15 @@ func GetPendingRequestsHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
 		}
- 
+
 		helpers.SendJSON(w, http.StatusOK, map[string]any{
 			"pending": requests,
 			"count":   count,
 		})
 	}
 }
- 
-func SendFollowRequestHandler(db *sql.DB) http.HandlerFunc {
+
+func SendFollowRequestHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		followeeID, err := parseID(r.PathValue("id"))
 		if err != nil {
@@ -188,18 +190,18 @@ func SendFollowRequestHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.BadRequest("cannot follow yourself"))
 			return
 		}
- 
+
 		target, err := queries.GetUserByID(db, followeeID)
 		if err != nil {
 			errors.Handle(w, r, errors.NotFound("user not found"))
 			return
 		}
- 
+
 		status := "pending"
 		if target.IsPublic {
 			status = "accepted"
 		}
- 
+
 		created, err := queries.UpsertFollowRequest(db, followerID, followeeID, status)
 		if err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
@@ -209,11 +211,17 @@ func SendFollowRequestHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Conflict("follow request already exists"))
 			return
 		}
- 
+
+		if status == "pending" {
+			if followID, err := queries.GetFollowID(db, followerID, followeeID); err == nil {
+				_ = notifications.Create(db, hub, followeeID, "follow_request", &followID)
+			}
+		}
+
 		helpers.SendJSON(w, http.StatusCreated, map[string]any{"status": status})
 	}
 }
- 
+
 func AcceptRequestHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestID, err := parseID(r.PathValue("requestId"))
@@ -239,16 +247,16 @@ func AcceptRequestHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Forbidden("not your request to accept"))
 			return
 		}
- 
+
 		if err := queries.UpdateFollowStatus(db, requestID, "accepted"); err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
 		}
- 
+
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "accepted"})
 	}
 }
- 
+
 // user B declines user A's request
 func DeclineRequestHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -262,7 +270,7 @@ func DeclineRequestHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrUnauthorized)
 			return
 		}
- 
+
 		follow, err := queries.GetFollowByID(db, requestID)
 		if err == sql.ErrNoRows {
 			errors.Handle(w, r, errors.NotFound("follow request not found"))
@@ -276,16 +284,16 @@ func DeclineRequestHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Forbidden("not your request to decline"))
 			return
 		}
- 
+
 		if err := queries.UpdateFollowStatus(db, requestID, "declined"); err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
 		}
- 
+
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "declined"})
 	}
 }
- 
+
 // user A undoes their request to user B
 func CancelRequestHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -299,7 +307,7 @@ func CancelRequestHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrUnauthorized)
 			return
 		}
- 
+
 		follow, err := queries.GetFollowByID(db, requestID)
 		if err == sql.ErrNoRows {
 			errors.Handle(w, r, errors.NotFound("follow request not found"))
@@ -313,16 +321,16 @@ func CancelRequestHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Forbidden("not your request to cancel"))
 			return
 		}
- 
+
 		if err := queries.DeleteFollow(db, requestID); err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
 		}
- 
+
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "cancelled"})
 	}
 }
- 
+
 func UnfollowHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		targetID, err := parseID(r.PathValue("id"))
@@ -335,16 +343,16 @@ func UnfollowHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrUnauthorized)
 			return
 		}
- 
+
 		if err := queries.RemoveAcceptedFollow(db, userID, targetID); err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
 		}
- 
+
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "unfollowed"})
 	}
 }
- 
+
 func RemoveFollowerHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		followerID, err := parseID(r.PathValue("id"))
@@ -352,21 +360,20 @@ func RemoveFollowerHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.BadRequest("invalid user id"))
 			return
 		}
- 
+
 		followeeID, ok := auth.GetUserID(r)
 		if !ok {
 			errors.Handle(w, r, errors.ErrUnauthorized)
 			return
 		}
- 
+
 		if err := queries.RemoveAcceptedFollow(db, followerID, followeeID); err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
 		}
- 
+
 		helpers.SendJSON(w, http.StatusOK, map[string]any{
 			"status": "removed",
 		})
 	}
 }
- 

@@ -191,3 +191,12 @@ func RemoveAcceptedFollow(db *sql.DB, followerID, followeeID string) error {
 	)
 	return err
 }
+
+func GetFollowID(db *sql.DB, followerID, followeeID string) (string, error) {
+	var id string
+	err := db.QueryRow(
+		`SELECT id FROM follows WHERE follower_id = ? AND followee_id = ?`,
+		followerID, followeeID,
+	).Scan(&id)
+	return id, err
+}
