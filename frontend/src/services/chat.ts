@@ -1,0 +1,24 @@
+import { request } from './http';
+import type { Message, GroupMessage } from '@/src/types/chat';
+
+export const chatApi = {
+  getConversation: (userId: string) =>
+    request<{ messages: Message[] }>(`/api/chat/${userId}`).then((res) => res.messages),
+
+  sendMessage: (userId: string, content: string) =>
+    request<{ chatId: string }>(`/api/chat/${userId}`, {
+      method: 'POST',
+      body: { content },
+    }),
+
+  getGroupMessages: (groupId: string) =>
+    request<{ messages: GroupMessage[] }>(`/api/chat/group/${groupId}`).then(
+      (res) => res.messages
+    ),
+
+  sendGroupMessage: (groupId: string, content: string) =>
+    request<{ chatId: string }>(`/api/chat/group/${groupId}`, {
+      method: 'POST',
+      body: { content },
+    }),
+};
