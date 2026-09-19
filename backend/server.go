@@ -8,6 +8,7 @@ import (
 
 	"social-network-test/pkg/auth"
 	"social-network-test/pkg/db/sqlite"
+	"social-network-test/pkg/middleware"
 	"social-network-test/pkg/router"
 	"social-network-test/pkg/ws"
 )
@@ -25,9 +26,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	router.RegisterRoutes(mux, db, hub)
+	handler := middleware.CORS(mux)
 
 	log.Println("Server starting on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }
 
 func cleanupExpiredSessions(db *sql.DB) {

@@ -25,7 +25,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 
 		exists, _ := queries.EmailExists(db, req.Email)
 		if exists {
-			errors.Handle(w, r, errors.Conflict("email already registered"))
+			errors.Handle(w, r, errors.Conflict("Email already registered"))
 			return
 		}
 
@@ -46,7 +46,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 			AboutMe:   sql.NullString{String: req.AboutMe, Valid: req.AboutMe != ""},
 		})
 		if err != nil {
-			errors.Handle(w, r, errors.Internal("failed to create user"))
+			errors.Handle(w, r, errors.Internal("Failed to create user"))
 			return
 		}
 

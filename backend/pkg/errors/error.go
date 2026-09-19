@@ -45,6 +45,6 @@ func Internal(message string) *Error {
 var (
 	ErrInvalidBody        = BadRequest("invalid request body")
 	ErrUnauthorized       = Unauthorized("unauthorized")
-	ErrInvalidCredentials = Unauthorized("invalid credentials")
+	ErrInvalidCredentials = Unauthorized("Invalid credentials")
 	ErrServerError        = Internal("server error")
 )

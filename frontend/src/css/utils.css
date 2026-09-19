@@ -1,0 +1,34 @@
+@utility gradient {
+  background-image: var(--brand-gradient);
+}
+
+@utility gradient-text {
+  background-image: var(--brand-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@utility glow {
+  box-shadow: 0 0 80px -20px color-mix(in oklab, var(--brand-500) 45%, transparent);
+}
+
+@utility ambient-brand {
+  background-image:
+    radial-gradient(
+      circle at 20% 15%,
+      color-mix(in oklab, var(--brand-500) 25%, transparent),
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 85% 85%,
+      color-mix(in oklab, var(--brand-pink) 18%, transparent),
+      transparent 45%
+    );
+}
+
+@utility field {
+  height: var(--control-height);
+  background-color: var(--surface);
+  border-color: var(--surface-border);
+}

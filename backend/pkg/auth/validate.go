@@ -20,7 +20,7 @@ const (
 	nicknameMaxLen = 13
 
 	aboutMeMinLen = 3
-	aboutMeMaxLen = 150
+	aboutMeMaxLen = 100
 )
 
 func ValidateRegisterRequest(req *models.RegisterRequest) error {
@@ -32,13 +32,13 @@ func ValidateRegisterRequest(req *models.RegisterRequest) error {
 	req.AboutMe = strings.TrimSpace(req.AboutMe)
 
 	if len(req.FirstName) < 1 || len(req.FirstName) > 50 {
-		return errors.New("first name must be between 1 and 50 characters")
+		return errors.New("First name must be between 1 and 50 characters")
 	}
 	if len(req.LastName) < 1 || len(req.LastName) > 50 {
-		return errors.New("last name must be between 1 and 50 characters")
+		return errors.New("Last name must be between 1 and 50 characters")
 	}
 	if !emailPattern.MatchString(req.Email) {
-		return errors.New("invalid email format")
+		return errors.New("Invalid email format")
 	}
 	if err := ValidateDOB(req.DOB); err != nil {
 		return err
@@ -57,19 +57,19 @@ func ValidateRegisterRequest(req *models.RegisterRequest) error {
 
 func ValidateDOB(dob string) error {
 	if dob == "" {
-		return errors.New("date of birth is required")
+		return errors.New("Date of birth is required")
 	}
 	parsed, err := time.Parse(dobLayout, dob)
 	if err != nil {
-		return errors.New("date of birth must be in YYYY-MM-DD format")
+		return errors.New("Date of birth must be in YYYY-MM-DD format")
 	}
 	if parsed.After(time.Now()) {
-		return errors.New("date of birth cannot be in the future")
+		return errors.New("Date of birth cannot be in the future")
 	}
 	if age := calculateAge(parsed); age < minAge {
-		return errors.New("you must be at least 13 years old to register")
+		return errors.New("You must be at least 13 years old to register")
 	} else if age > maxAge {
-		return errors.New("date of birth is invalid")
+		return errors.New("Date of birth is invalid")
 	}
 	return nil
 }
@@ -88,14 +88,14 @@ func ValidateNickname(nickname string) error {
 		return nil
 	}
 	if len(nickname) < nicknameMinLen {
-		return errors.New("nickname must be at least 3 characters")
+		return errors.New("Nickname must be at least 3 characters")
 	}
 	if len(nickname) > nicknameMaxLen {
-		return errors.New("nickname must be at most 13 characters")
+		return errors.New("Nickname must be at most 13 characters")
 	}
 	for _, c := range nickname {
 		if !unicode.IsLetter(c) && !unicode.IsDigit(c) {
-			return errors.New("nickname must contain only letters and numbers")
+			return errors.New("Nickname must contain only letters and numbers")
 		}
 	}
 	return nil
@@ -106,14 +106,14 @@ func ValidateAboutMe(aboutMe string) error {
 		return nil
 	}
 	if len(aboutMe) < aboutMeMinLen {
-		return errors.New("about me must be at least 3 characters")
+		return errors.New("About me must be at least 3 characters")
 	}
 	if len(aboutMe) > aboutMeMaxLen {
-		return errors.New("about me must be at most 150 characters")
+		return errors.New("About me must be at most 100 characters")
 	}
 	for _, c := range aboutMe {
 		if !unicode.IsLetter(c) && !unicode.IsDigit(c) && c != ' ' {
-			return errors.New("about me must contain only letters, numbers, and spaces")
+			return errors.New("About me must contain only letters, numbers, and spaces")
 		}
 	}
 	return nil
@@ -121,7 +121,7 @@ func ValidateAboutMe(aboutMe string) error {
 
 func ValidatePasswordStrength(password string) error {
 	if len(password) < 8 {
-		return errors.New("password must be at least 8 characters")
+		return errors.New("Password must be at least 8 characters")
 	}
 	var hasUpper, hasDigit, hasLower, hasSpecialCharacter bool
 
@@ -144,7 +144,7 @@ func ValidatePasswordStrength(password string) error {
 	}
 
 	if !hasUpper || !hasLower || !hasSpecialCharacter || !hasDigit {
-		return errors.New("password must contain at least one uppercase letter, one lowercase letter, one digit and one number")
+		return errors.New("Password must contain at least one uppercase letter, one lowercase letter, one digit and one special case character")
 	}
 	return nil
 }
