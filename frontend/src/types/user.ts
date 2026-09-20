@@ -15,7 +15,7 @@ export interface PostSummary {
   postId: string;
   content: string;
   img?: string;
-  privacy: 'public' | 'almost_private' | 'private';
+  privacy: 'public' | 'followers' | 'private';
   createdAt: string;
 }
 
@@ -47,4 +47,16 @@ export interface RegisterPayload {
 export interface LoginPayload {
   identifier: string;
   password: string;
+}
+
+export interface UpdateProfilePayload {
+  firstName?: string;
+  lastName?: string;
+  nickname?: string;
+  aboutMe?: string;
+}
+
+export interface UpdatePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
 }

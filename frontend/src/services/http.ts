@@ -1,4 +1,12 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
+
+/** Turns a backend-relative media path (e.g. "/uploads/avatars/x.png") into an absolute URL. */
+export function mediaUrl(path?: string): string | undefined {
+  if (!path) {
+    return undefined;
+  }
+  return path.startsWith('http') ? path : `${API_URL}${path}`;
+}
 
 export class ApiError extends Error {
   status: number;
