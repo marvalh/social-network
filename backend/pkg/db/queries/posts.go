@@ -66,6 +66,51 @@ func AddPostVisibility(db DBTX, postID string, userIDs []string) error {
 	return nil
 }
 
+func ListPostAudience(db *sql.DB, postID string) ([]string, error) {
+	var ownerID string
+	var groupID sql.NullString
+	var privacy string
+	if err := db.QueryRow(
+		`SELECT user_id, group_id, privacy FROM posts WHERE post_id = ?`, postID,
+	).Scan(&ownerID, &groupID, &privacy); err != nil {
+		return nil, err
+	}
+
+	query := `SELECT user_id FROM users`
+	args := []any{}
+	switch {
+	case groupID.Valid:
+		query = `SELECT members_id FROM group_members WHERE group_id = ?`
+		args = append(args, groupID.String)
+	case privacy == models.PrivacyFollowers:
+		query = `SELECT follower_id FROM follows WHERE followee_id = ? AND status = 'accepted'`
+		args = append(args, ownerID)
+	case privacy == models.PrivacyPrivate:
+		query = `SELECT user_id FROM post_visible_to WHERE post_id = ?`
+		args = append(args, postID)
+	}
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	audience := []string{ownerID}
+	seen := map[string]bool{ownerID: true}
+	for rows.Next() {
+		var userID string
+		if err := rows.Scan(&userID); err != nil {
+			return nil, err
+		}
+		if !seen[userID] {
+			audience = append(audience, userID)
+			seen[userID] = true
+		}
+	}
+	return audience, rows.Err()
+}
+
 func CanViewPost(db *sql.DB, viewerID string, p *models.Post) (bool, error) {
 	if p.UserID == viewerID {
 		return true, nil

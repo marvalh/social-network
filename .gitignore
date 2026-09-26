@@ -1,0 +1,7 @@
+# Local runtime data
+backend/data/*.db
+backend/data/*.db-*
+backend/private_uploads/
+
+# Operating system files
+.DS_Store
