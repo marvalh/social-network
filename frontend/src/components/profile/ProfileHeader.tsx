@@ -2,7 +2,18 @@
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { AtSign, CalendarDays, Cake, Camera, Globe, Loader2, Lock, Mail, Pencil, Trash2 } from 'lucide-react';
+import {
+  AtSign,
+  CalendarDays,
+  Cake,
+  Camera,
+  Globe,
+  Loader2,
+  Lock,
+  Mail,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ApiError, profileApi } from '@/src/services/api';
 import type { FollowStatus, Profile } from '@/src/types/user';
@@ -159,6 +170,7 @@ export function ProfileHeader({
                 <FollowButton
                   userId={user.userId}
                   status={profile.followStatus}
+                  requestId={profile.followRequestId}
                   onChange={onFollowChange}
                 />
               </>
@@ -182,7 +194,7 @@ export function ProfileHeader({
               {user.isPublic ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
               {user.isPublic ? 'Public profile' : 'Private profile'}
             </span>
-                        {canView && user.email && (
+            {canView && user.email && (
               <span className="flex items-center gap-1.5">
                 <Mail className="h-4 w-4" />
                 {user.email}

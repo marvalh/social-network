@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/src/services/api';
 import { useAuth } from '@/src/context/Auth';
+import {profileApi} from '@/src/services/profile'
 import { AuthHeading, CharCount, FormError } from './Authformparts';
 import {
   ABOUT_ME_MAX,
@@ -21,9 +23,11 @@ import {
 } from '@/src/utils/validation';
 
 export function RegisterForm() {
-  const { register } = useAuth();
+  const { register, login } = useAuth();
   const router = useRouter();
 
+  const [avatar, setAvatar] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -36,7 +40,29 @@ export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!avatar) {
+      setAvatarPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(avatar);
+    setAvatarPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [avatar]);
+
+  const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+  const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
+
   function firstValidationError(): string | null {
+    if (avatar) {
+      if (!AVATAR_TYPES.includes(avatar.type)) {
+        return 'Avatar must be a JPEG, PNG or GIF image';
+      }
+      if (avatar.size > MAX_AVATAR_BYTES) {
+        return 'Avatar must be smaller than 5 MB';
+      }
+    }
+
     if (firstName.trim() === '' || firstName.trim().length > 50) {
       return 'First name must be between 1 and 50 characters';
     }
@@ -90,6 +116,18 @@ export function RegisterForm() {
         nickname: nickname.trim() || undefined,
         aboutMe: aboutMe.trim() || undefined,
       });
+
+      if (avatar) {
+        // register doesn't create a session, and avatar upload needs one so
+        // log in with the same credentials just long enough to attach the photo.
+        try {
+          await login({ identifier: email.trim(), password });
+          await profileApi.uploadAvatar(avatar);
+        } catch {
+          //a failed avatar upload shouldn't block registration
+        }
+      }
+
       router.replace('/login?registered=1');
     } catch (err) {
       if (err instanceof ApiError) {
@@ -108,6 +146,41 @@ export function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <FormError>{error}</FormError>
 
+        <div className="flex flex-col items-center gap-2">
+          <label
+            htmlFor="avatar"
+            className="group relative h-24 w-24 cursor-pointer overflow-hidden rounded-full border border-surface-border bg-surface transition hover:border-ring"
+          >
+            {avatarPreview ? (
+              <img
+                src={avatarPreview}
+                alt="Avatar preview"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                <Camera className="h-6 w-6" />
+              </div>
+            )}
+
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100">
+              <Camera className="h-5 w-5 text-white" />
+            </div>
+          </label>
+
+          <input
+            id="avatar"
+            name="avatar"
+            type="file"
+            accept="image/jpeg,image/png,image/gif"
+            onChange={(e) => setAvatar(e.target.files?.[0] ?? null)}
+            className="sr-only"
+          />
+
+          <span className="text-xs text-muted-foreground">
+            {avatar ? avatar.name : 'Add a profile photo (optional)'}
+          </span>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="firstName" className="text-muted-foreground">

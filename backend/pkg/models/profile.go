@@ -11,16 +11,17 @@ type PostSummary struct {
 }
 
 type ProfileResponse struct {
-	User           UserResponse   `json:"user"`
-	IsOwner        bool           `json:"isOwner"`
-	CanView        bool           `json:"canView"`
-	FollowStatus   string         `json:"followStatus"` // "self" | "none" | "pending" | "accepted"
-	IsFollowing    bool           `json:"isFollowing"`
-	FollowerCount  int            `json:"followerCount"`
-	FollowingCount int            `json:"followingCount"`
-	Followers      []UserResponse `json:"followers,omitempty"`
-	Following      []UserResponse `json:"following,omitempty"`
-	Posts          []PostSummary  `json:"posts,omitempty"`
+	User            UserResponse   `json:"user"`
+	IsOwner         bool           `json:"isOwner"`
+	CanView         bool           `json:"canView"`
+	FollowStatus    string         `json:"followStatus"` // "self" | "none" | "pending" | "accepted"
+	FollowRequestID *string        `json:"followRequestId,omitempty"`
+	IsFollowing     bool           `json:"isFollowing"`
+	FollowerCount   int            `json:"followerCount"`
+	FollowingCount  int            `json:"followingCount"`
+	Followers       []UserResponse `json:"followers,omitempty"`
+	Following       []UserResponse `json:"following,omitempty"`
+	Posts           []PostSummary  `json:"posts,omitempty"`
 }
 
 type UpdateProfileRequest struct {

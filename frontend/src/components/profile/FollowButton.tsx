@@ -1,20 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { Check, Clock, UserMinus, UserPlus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Check, Clock, UserMinus, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ApiError, followApi } from '@/src/services/api';
-import type { FollowStatus } from '@/src/types/user';
+import type { FollowStatus } from '@/src/types/follow';
 
 interface FollowButtonProps {
   userId: string;
   status: FollowStatus;
+  requestId?: string;
   onChange: (status: FollowStatus) => void;
 }
 
-export function FollowButton({ userId, status, onChange }: FollowButtonProps) {
+export function FollowButton({ userId, status, requestId: initialRequestId, onChange }: FollowButtonProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(initialRequestId ?? null);
+
+  useEffect(() => {
+    setRequestId(initialRequestId ?? null);
+  }, [initialRequestId]);
 
   if (status === 'self') {
     return null;
@@ -32,8 +38,22 @@ export function FollowButton({ userId, status, onChange }: FollowButtonProps) {
     }
   }
 
-  const follow = () => run(() => followApi.follow(userId));
-  const unfollow = () => run(() => followApi.unfollow(userId).then<FollowStatus>(() => 'none'));
+  const follow = () =>
+    run(() =>
+      followApi.follow(userId).then(({ status, requestId }) => {
+        setRequestId(requestId);
+        return status;
+      })
+    );
+
+  const unfollow = () => run(() => followApi.unfollow(userId).then(() => 'none' as FollowStatus));
+
+  const cancel = () =>
+    run(() =>
+      requestId
+        ? followApi.cancelRequest(requestId).then(() => 'none' as FollowStatus)
+        : Promise.resolve(status)
+    );
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -50,9 +70,17 @@ export function FollowButton({ userId, status, onChange }: FollowButtonProps) {
       )}
 
       {status === 'pending' && (
-        <Button size="lg" variant="secondary" disabled className="px-4">
-          <Clock className="h-4 w-4" />
-          Requested
+        <Button
+          size="lg"
+          variant="secondary"
+          disabled={busy}
+          onClick={cancel}
+          className="group px-4"
+        >
+          <Clock className="h-4 w-4 group-hover:hidden" />
+          <X className="hidden h-4 w-4 group-hover:block" />
+          <span className="group-hover:hidden">Requested</span>
+          <span className="hidden group-hover:inline">Cancel</span>
         </Button>
       )}
 

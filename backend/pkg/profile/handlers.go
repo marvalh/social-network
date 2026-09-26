@@ -49,13 +49,21 @@ func GetProfileHandler(db *sql.DB) http.HandlerFunc {
 		}
 		isFollowing := followStatus == "accepted"
 
+		var followRequestID *string
+		if followStatus == "pending" {
+			if id, err := queries.GetFollowID(db, viewerID, targetID); err == nil {
+				followRequestID = &id
+			}
+		}
+
 		canView := isOwner || target.IsPublic || isFollowing
 
 		resp := models.ProfileResponse{
-			IsOwner:      isOwner,
-			CanView:      canView,
-			FollowStatus: followStatus,
-			IsFollowing:  isFollowing,
+			IsOwner:         isOwner,
+			CanView:         canView,
+			FollowStatus:    followStatus,
+			FollowRequestID: followRequestID,
+			IsFollowing:     isFollowing,
 		}
 
 		if !canView {

@@ -26,6 +26,7 @@ export interface Profile {
   isOwner: boolean;
   canView: boolean;
   followStatus: FollowStatus;
+  followRequestId?: string;
   isFollowing: boolean;
   followerCount: number;
   followingCount: number;
