@@ -49,3 +49,9 @@ func (h *Hub) SendToUser(userID string, payload any) {
 		conn.WriteJSON(payload)
 	}
 }
+
+func (h *Hub) SendToUsers(userIDs []string, payload any) {
+	for _, userID := range userIDs {
+		h.SendToUser(userID, payload)
+	}
+}

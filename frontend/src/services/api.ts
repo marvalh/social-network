@@ -5,3 +5,4 @@ export { notificationsApi } from './notifications';
 export { groupsApi } from './groups';
 export { profileApi } from './profile';
 export { followApi } from './follow';
+export { postsApi } from './posts';

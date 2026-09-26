@@ -13,6 +13,7 @@ import (
 	"social-network-test/pkg/errors"
 	"social-network-test/pkg/images"
 	"social-network-test/pkg/models"
+	"social-network-test/pkg/ws"
 
 	"github.com/google/uuid"
 )
@@ -23,8 +24,8 @@ const (
 
 	MaxPostContentLength    = 5000
 	MaxCommentContentLength = 2000
-	PostImageUploadDir = "./private_uploads/posts"
-	imagesURLPrefix    = "/api/images/posts/"
+	PostImageUploadDir      = "./private_uploads/posts"
+	imagesURLPrefix         = "/api/images/posts/"
 )
 
 func parseID(raw string) (string, error) {
@@ -86,7 +87,42 @@ func checkCommentAccessible(db *sql.DB, commentID string, viewerID string) error
 	return nil
 }
 
-func CreatePostHandler(db *sql.DB) http.HandlerFunc {
+func notifyPostAudience(db *sql.DB, hub *ws.Hub, postID, action string, previousAudience ...[]string) {
+	if hub == nil {
+		return
+	}
+	audience, err := queries.ListPostAudience(db, postID)
+	if err != nil && len(previousAudience) == 0 {
+		return
+	}
+	seen := make(map[string]bool, len(audience))
+	for _, userID := range audience {
+		seen[userID] = true
+	}
+	for _, prior := range previousAudience {
+		for _, userID := range prior {
+			if !seen[userID] {
+				audience = append(audience, userID)
+				seen[userID] = true
+			}
+		}
+	}
+	hub.SendToUsers(audience, map[string]string{
+		"kind":   "post",
+		"action": action,
+		"postId": postID,
+	})
+}
+
+func postAudience(db *sql.DB, postID string) []string {
+	audience, err := queries.ListPostAudience(db, postID)
+	if err != nil {
+		return nil
+	}
+	return audience
+}
+
+func CreatePostHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -126,6 +162,10 @@ func CreatePostHandler(db *sql.DB) http.HandlerFunc {
 				errors.Handle(w, r, errors.BadRequest("invalid privacy value"))
 				return
 			}
+			if req.Privacy == models.PrivacyPrivate && len(req.VisibleToIDs) == 0 {
+				errors.Handle(w, r, errors.BadRequest("select at least one follower for a private post"))
+				return
+			}
 		}
 
 		if req.Img != "" {
@@ -145,11 +185,16 @@ func CreatePostHandler(db *sql.DB) http.HandlerFunc {
 		if req.GroupID == nil && req.Privacy == models.PrivacyPrivate && len(req.VisibleToIDs) > 0 {
 			allowed = make([]string, 0, len(req.VisibleToIDs))
 			for _, candidate := range req.VisibleToIDs {
-				// only actual followers of the poster may be granted access
 				isFollower, err := queries.IsFollowing(db, candidate, userID)
-				if err == nil && isFollower {
-					allowed = append(allowed, candidate)
+				if err != nil {
+					errors.Handle(w, r, errors.ErrServerError)
+					return
 				}
+				if !isFollower {
+					errors.Handle(w, r, errors.BadRequest("private posts can only be shared with your followers"))
+					return
+				}
+				allowed = append(allowed, candidate)
 			}
 		}
 
@@ -187,6 +232,7 @@ func CreatePostHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Internal("post created but failed to load"))
 			return
 		}
+		notifyPostAudience(db, hub, postID, "created")
 		writeJSON(w, http.StatusCreated, sanitizePost(*post))
 	}
 }
@@ -306,7 +352,7 @@ func GetPostHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func LikePostHandler(db *sql.DB) http.HandlerFunc {
+func LikePostHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -327,11 +373,12 @@ func LikePostHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Internal("failed to like post"))
 			return
 		}
+		notifyPostAudience(db, hub, postID, "liked")
 		writeMessage(w, http.StatusOK, "liked")
 	}
 }
 
-func UnlikePostHandler(db *sql.DB) http.HandlerFunc {
+func UnlikePostHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -352,11 +399,12 @@ func UnlikePostHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Internal("failed to unlike post"))
 			return
 		}
+		notifyPostAudience(db, hub, postID, "unliked")
 		writeMessage(w, http.StatusOK, "unliked")
 	}
 }
 
-func CreateCommentHandler(db *sql.DB) http.HandlerFunc {
+func CreateCommentHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -410,6 +458,7 @@ func CreateCommentHandler(db *sql.DB) http.HandlerFunc {
 			writeJSON(w, http.StatusCreated, map[string]string{"commentId": commentID})
 			return
 		}
+		notifyPostAudience(db, hub, postID, "comment.created")
 		writeJSON(w, http.StatusCreated, sanitizeComment(*comment))
 	}
 }
@@ -447,7 +496,7 @@ func GetCommentsHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func LikeCommentHandler(db *sql.DB) http.HandlerFunc {
+func LikeCommentHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -468,11 +517,15 @@ func LikeCommentHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Internal("failed to like comment"))
 			return
 		}
+		postID, err := queries.GetCommentPostID(db, commentID)
+		if err == nil {
+			notifyPostAudience(db, hub, postID, "comment.liked")
+		}
 		writeMessage(w, http.StatusOK, "liked")
 	}
 }
 
-func UnlikeCommentHandler(db *sql.DB) http.HandlerFunc {
+func UnlikeCommentHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -493,11 +546,15 @@ func UnlikeCommentHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Internal("failed to unlike comment"))
 			return
 		}
+		postID, err := queries.GetCommentPostID(db, commentID)
+		if err == nil {
+			notifyPostAudience(db, hub, postID, "comment.unliked")
+		}
 		writeMessage(w, http.StatusOK, "unliked")
 	}
 }
 
-func UpdatePostHandler(db *sql.DB) http.HandlerFunc {  
+func UpdatePostHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -568,14 +625,26 @@ func UpdatePostHandler(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
+		updateVisibility := !groupID.Valid && (req.VisibleToIDs != nil || (req.Privacy != "" && finalPrivacy != currentPrivacy))
+		previousAudience := postAudience(db, postID)
 		var allowed []string
-		if !groupID.Valid && finalPrivacy == models.PrivacyPrivate && len(req.VisibleToIDs) > 0 {
+		if updateVisibility && finalPrivacy == models.PrivacyPrivate {
+			if len(req.VisibleToIDs) == 0 {
+				errors.Handle(w, r, errors.BadRequest("select at least one follower for a private post"))
+				return
+			}
 			allowed = make([]string, 0, len(req.VisibleToIDs))
 			for _, candidate := range req.VisibleToIDs {
 				isFollower, err := queries.IsFollowing(db, candidate, userID)
-				if err == nil && isFollower {
-					allowed = append(allowed, candidate)
+				if err != nil {
+					errors.Handle(w, r, errors.ErrServerError)
+					return
 				}
+				if !isFollower {
+					errors.Handle(w, r, errors.BadRequest("private posts can only be shared with your followers"))
+					return
+				}
+				allowed = append(allowed, candidate)
 			}
 		}
 
@@ -595,12 +664,12 @@ func UpdatePostHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Internal("failed to update post"))
 			return
 		}
-		if !groupID.Valid {
+		if updateVisibility {
 			if err := queries.ClearPostVisibility(tx, postID); err != nil {
 				errors.Handle(w, r, errors.Internal("failed to update post visibility"))
 				return
 			}
-			if len(allowed) > 0 {
+			if finalPrivacy == models.PrivacyPrivate {
 				if err := queries.AddPostVisibility(tx, postID, allowed); err != nil {
 					errors.Handle(w, r, errors.Internal("failed to set post visibility"))
 					return
@@ -622,11 +691,12 @@ func UpdatePostHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Internal("post updated but failed to load"))
 			return
 		}
+		notifyPostAudience(db, hub, postID, "updated", previousAudience)
 		writeJSON(w, http.StatusOK, sanitizePost(*post))
 	}
 }
 
-func DeletePostHandler(db *sql.DB) http.HandlerFunc {
+func DeletePostHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -652,6 +722,7 @@ func DeletePostHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Forbidden("only the author can delete this post"))
 			return
 		}
+		audience := postAudience(db, postID)
 
 		if err := queries.DeletePost(db, postID); err != nil {
 			errors.Handle(w, r, errors.Internal("failed to delete post"))
@@ -660,11 +731,12 @@ func DeletePostHandler(db *sql.DB) http.HandlerFunc {
 		if img != "" {
 			_ = images.DeletePrevious(PostImageUploadDir, img)
 		}
+		notifyPostAudience(db, hub, postID, "deleted", audience)
 		writeMessage(w, http.StatusOK, "post deleted")
 	}
 }
 
-func UpdateCommentHandler(db *sql.DB) http.HandlerFunc {
+func UpdateCommentHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -690,6 +762,7 @@ func UpdateCommentHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Forbidden("only the author can edit this comment"))
 			return
 		}
+		postID, _ := queries.GetCommentPostID(db, commentID)
 
 		var req models.UpdateCommentRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -736,11 +809,12 @@ func UpdateCommentHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Internal("comment updated but failed to load"))
 			return
 		}
+		notifyPostAudience(db, hub, postID, "comment.updated")
 		writeJSON(w, http.StatusOK, sanitizeComment(*comment))
 	}
 }
 
-func DeleteCommentHandler(db *sql.DB) http.HandlerFunc {
+func DeleteCommentHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -766,6 +840,7 @@ func DeleteCommentHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.Forbidden("only the author can delete this comment"))
 			return
 		}
+		postID, _ := queries.GetCommentPostID(db, commentID)
 
 		if err := queries.DeleteComment(db, commentID); err != nil {
 			errors.Handle(w, r, errors.Internal("failed to delete comment"))
@@ -774,6 +849,7 @@ func DeleteCommentHandler(db *sql.DB) http.HandlerFunc {
 		if img != "" {
 			_ = images.DeletePrevious(PostImageUploadDir, img)
 		}
+		notifyPostAudience(db, hub, postID, "comment.deleted")
 		writeMessage(w, http.StatusOK, "comment deleted")
 	}
 }
