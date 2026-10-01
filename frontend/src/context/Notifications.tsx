@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useSocket } from '@/src/context/Socket';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useAuth } from './Auth';
+import { useSocket } from './Socket';
 import { notificationsApi } from '@/src/services/api';
 import type { Notification, NotificationPush } from '@/src/types/notification';
 
@@ -16,7 +17,17 @@ function isNotificationPush(data: unknown): data is NotificationPush {
   );
 }
 
-export function useNotifications() {
+interface NotificationsContextValue {
+  notifications: Notification[];
+  unreadCount: number;
+  loading: boolean;
+  markRead: (notifId: string) => Promise<void>;
+}
+
+const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined);
+
+export function NotificationsProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const { subscribe } = useSocket();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -29,9 +40,15 @@ export function useNotifications() {
   }, []);
 
   useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     refresh().finally(() => setLoading(false));
-  }, [refresh]);
+  }, [user, refresh]);
 
   useEffect(() => {
     return subscribe((data) => {
@@ -49,5 +66,17 @@ export function useNotifications() {
     setUnreadCount((prev) => Math.max(0, prev - 1));
   }, []);
 
-  return { notifications, unreadCount, loading, markRead };
+  return (
+    <NotificationsContext.Provider value={{ notifications, unreadCount, loading, markRead }}>
+      {children}
+    </NotificationsContext.Provider>
+  );
+}
+
+export function useNotifications() {
+  const ctx = useContext(NotificationsContext);
+  if (!ctx) {
+    throw new Error('useNotifications must be used within a NotificationsProvider');
+  }
+  return ctx;
 }
