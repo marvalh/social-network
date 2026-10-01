@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Compass, Home, LogOut, MessageCircle, Search, Users } from 'lucide-react';
+import { Compass, Home, LogOut, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -9,7 +9,6 @@ import { useAuth } from '@/src/context/Auth';
 import { useSocket } from '@/src/context/Socket';
 import { ApiError, postsApi } from '@/src/services/api';
 import { isPostRealtimeEvent, type Post } from '@/src/types/post';
-import { mediaUrl } from '@/src/utils/media';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
 import { PostCard } from './PostCard';
 import { PostComposer } from './PostComposer';
@@ -42,32 +41,35 @@ export function FeedPage() {
       .finally(() => setLoadingPosts(false));
   }, [loading, user, router]);
 
-  useEffect(() =>
-    subscribe((data) => {
-      if (!isPostRealtimeEvent(data)) return;
-      if (data.action === 'deleted') {
-        setPosts((current) => current.filter((post) => post.postId !== data.postId));
-        return;
-      }
+  useEffect(
+    () =>
+      subscribe((data) => {
+        if (!isPostRealtimeEvent(data)) return;
+        if (data.action === 'deleted') {
+          setPosts((current) => current.filter((post) => post.postId !== data.postId));
+          return;
+        }
 
-      postsApi
-        .get(data.postId)
-        .then((updated) => {
-          if (updated.groupId) return;
-          setPosts((current) => {
-            const alreadyLoaded = current.some((post) => post.postId === updated.postId);
-            if (!alreadyLoaded && data.action !== 'created') return current;
-            return [updated, ...current.filter((post) => post.postId !== updated.postId)].sort(
-              (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
-            );
+        postsApi
+          .get(data.postId)
+          .then((updated) => {
+            if (updated.groupId) return;
+            setPosts((current) => {
+              const alreadyLoaded = current.some((post) => post.postId === updated.postId);
+              if (!alreadyLoaded && data.action !== 'created') return current;
+              return [updated, ...current.filter((post) => post.postId !== updated.postId)].sort(
+                (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
+              );
+            });
+          })
+          .catch((err: unknown) => {
+            if (err instanceof ApiError && err.status === 404) {
+              setPosts((current) => current.filter((post) => post.postId !== data.postId));
+            }
           });
-        })
-        .catch((err: unknown) => {
-          if (err instanceof ApiError && err.status === 404) {
-            setPosts((current) => current.filter((post) => post.postId !== data.postId));
-          }
-        });
-    }), [subscribe]);
+      }),
+    [subscribe]
+  );
 
   async function loadMore() {
     if (loadingMore || !hasMore) return;
@@ -97,145 +99,90 @@ export function FeedPage() {
 
   if (loading || !user) return <FullPageSpinner />;
 
-  const avatarUrl = mediaUrl(user.avatar);
-
   return (
-    <div className="min-h-screen bg-canvas">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
-          <Link href="/" className="gradient-text text-xl font-bold tracking-tight">
-            social-network
+    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[15rem_minmax(0,38rem)_17rem]">
+      <aside className="hidden lg:block">
+        <nav className="sticky top-24 space-y-1">
+          <Link
+            href="/"
+            className="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2.5 text-sm font-medium text-brand-400"
+          >
+            <Home className="size-4" /> Home
           </Link>
-          <div className="hidden max-w-sm flex-1 items-center rounded-lg border border-border bg-surface px-3 text-muted-foreground md:flex">
-            <Search className="size-4" />
-            <input
-              className="w-full bg-transparent px-2 py-2 text-sm outline-none"
-              placeholder="Search your network"
-              aria-label="Search your network"
-            />
-          </div>
-          <nav className="ml-auto flex items-center gap-1">
-            {/* TODO(posts-feed): swap for <Link href="/notifications"> once feature/chat-notifications merges */}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Notifications (coming soon)"
-              title="Notifications — coming soon"
-              disabled
-              className="cursor-not-allowed opacity-50"
-            >
-              <Bell />
-            </Button>
-            {/* TODO(posts-feed): swap for <Link href="/messages"> once feature/chat-notifications merges */}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Messages (coming soon)"
-              title="Messages — coming soon"
-              disabled
-              className="cursor-not-allowed opacity-50"
-            >
-              <MessageCircle />
-            </Button>
-            <Link href={`/profile/${user.userId}`} className="ml-1">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="size-8 rounded-full object-cover" />
-              ) : (
-                <div className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold text-brand-400">
-                  {user.firstName.charAt(0)}
-                </div>
-              )}
-            </Link>
-          </nav>
+          <Link
+            href="/"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <Compass className="size-4" /> Discover
+          </Link>
+          <Link
+            href="/"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <Users className="size-4" /> People
+          </Link>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 px-3 text-muted-foreground hover:text-foreground"
+            onClick={() => logout()}
+          >
+            <LogOut className="size-4" /> Log out
+          </Button>
+        </nav>
+      </aside>
+      <main className="min-w-0 overflow-hidden rounded-xl border border-border shadow-2xl shadow-black/10">
+        <div className="border-b border-border bg-card px-5 pt-5 sm:px-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-400">
+            Your network
+          </p>
+          <h1 className="mt-1 pb-5 text-2xl font-semibold tracking-tight">
+            The latest from your circle
+          </h1>
         </div>
-      </header>
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[15rem_minmax(0,38rem)_17rem]">
-        <aside className="hidden lg:block">
-          <nav className="sticky top-24 space-y-1">
-            <Link
-              href="/"
-              className="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2.5 text-sm font-medium text-brand-400"
-            >
-              <Home className="size-4" /> Home
-            </Link>
-            <Link
-              href="/"
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Compass className="size-4" /> Discover
-            </Link>
-            <Link
-              href="/"
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Users className="size-4" /> People
-            </Link>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 px-3 text-muted-foreground hover:text-foreground"
-              onClick={() => logout()}
-            >
-              <LogOut className="size-4" /> Log out
-            </Button>
-          </nav>
-        </aside>
-        <main className="min-w-0 overflow-hidden rounded-xl border border-border shadow-2xl shadow-black/10">
-          <div className="border-b border-border bg-card px-5 pt-5 sm:px-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-400">
-              Your network
-            </p>
-            <h1 className="mt-1 pb-5 text-2xl font-semibold tracking-tight">
-              The latest from your circle
-            </h1>
-          </div>
-          <PostComposer onCreated={(post) => setPosts((current) => [post, ...current])} />
-          {loadingPosts ? (
-            <div className="p-10 text-center text-sm text-muted-foreground">
-              Loading your feed...
-            </div>
-          ) : error && posts.length === 0 ? (
-            <div className="p-10 text-center text-sm text-destructive">{error}</div>
-          ) : posts.length === 0 ? (
-            <div className="p-10 text-center">
-              <p className="font-medium">Your feed is quiet.</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Share the first update and start the conversation.
-              </p>
-            </div>
-          ) : (
-            <>
-              {posts.map((post) => (
-                <PostCard
-                  key={post.postId}
-                  post={post}
-                  onUpdated={handleUpdated}
-                  onDeleted={handleDeleted}
-                />
-              ))}
-              {hasMore && (
-                <div className="p-5 text-center">
-                  <Button variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
-                    {loadingMore ? 'Loading...' : 'Load more'}
-                  </Button>
-                  {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-                </div>
-              )}
-            </>
-          )}
-        </main>
-        <aside className="hidden lg:block">
-          <div className="sticky top-24 space-y-5">
-            <section className="rounded-xl border border-border bg-card p-4">
-              <p className="text-sm font-semibold">Welcome, {user.firstName}</p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Keep your circle close with small, real updates.
-              </p>
-            </section>
-            <p className="px-1 text-xs text-muted-foreground">
+        <PostComposer onCreated={(post) => setPosts((current) => [post, ...current])} />
+        {loadingPosts ? (
+          <div className="p-10 text-center text-sm text-muted-foreground">Loading your feed...</div>
+        ) : error && posts.length === 0 ? (
+          <div className="p-10 text-center text-sm text-destructive">{error}</div>
+        ) : posts.length === 0 ? (
+          <div className="p-10 text-center">
+            <p className="font-medium">Your feed is quiet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Share the first update and start the conversation.
             </p>
           </div>
-        </aside>
-      </div>
+        ) : (
+          <>
+            {posts.map((post) => (
+              <PostCard
+                key={post.postId}
+                post={post}
+                onUpdated={handleUpdated}
+                onDeleted={handleDeleted}
+              />
+            ))}
+            {hasMore && (
+              <div className="p-5 text-center">
+                <Button variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
+                  {loadingMore ? 'Loading...' : 'Load more'}
+                </Button>
+                {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+              </div>
+            )}
+          </>
+        )}
+      </main>
+      <aside className="hidden lg:block">
+        <div className="sticky top-24 space-y-5">
+          <section className="rounded-xl border border-border bg-card p-4">
+            <p className="text-sm font-semibold">Welcome, {user.firstName}</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Keep your circle close with small, real updates.
+            </p>
+          </section>
+          <p className="px-1 text-xs text-muted-foreground"></p>
+        </div>
+      </aside>
     </div>
   );
 }

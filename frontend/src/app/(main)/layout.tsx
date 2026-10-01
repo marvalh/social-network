@@ -4,6 +4,8 @@ import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/src/context/Auth';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
+import { Topbar } from '@/src/components/layout/Topbar';
+import { NotificationsProvider } from '@/src/context/Notifications';
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -14,5 +16,13 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   }, [loading, user, router]);
 
   if (loading || !user) return <FullPageSpinner />;
-  return children;
+
+  return (
+    <div className="min-h-screen bg-canvas">
+      <NotificationsProvider>
+        <Topbar />
+        {children}
+      </NotificationsProvider>
+    </div>
+  );
 }
