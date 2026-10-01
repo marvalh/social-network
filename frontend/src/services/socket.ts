@@ -5,10 +5,15 @@ const WS_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080').repl
 
 const RECONNECT_DELAY_MS = 3000;
 
+export interface SocketConnection {
+  send: (data: unknown) => void;
+  disconnect: () => void;
+}
+
 export function connectSocket(
   onMessage: (data: unknown) => void,
   onStatusChange?: (connected: boolean) => void
-): () => void {
+): SocketConnection {
   let socket: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
@@ -42,9 +47,16 @@ export function connectSocket(
 
   open();
 
-  return function disconnect() {
-    stopped = true;
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    socket?.close();
+  return {
+    send(data: unknown) {
+      if (socket?.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(data));
+      }
+    },
+    disconnect() {
+      stopped = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      socket?.close();
+    },
   };
 }

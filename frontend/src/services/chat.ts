@@ -1,5 +1,5 @@
 import { request } from './http';
-import type { Message, GroupMessage } from '@/src/types/chat';
+import type { Message, GroupMessage, Conversation } from '@/src/types/chat';
 
 export const chatApi = {
   getConversation: (userId: string) =>
@@ -12,13 +12,13 @@ export const chatApi = {
     }),
 
   getGroupMessages: (groupId: string) =>
-    request<{ messages: GroupMessage[] }>(`/api/chat/group/${groupId}`).then(
-      (res) => res.messages
-    ),
+    request<{ messages: GroupMessage[] }>(`/api/chat/group/${groupId}`).then((res) => res.messages),
 
   sendGroupMessage: (groupId: string, content: string) =>
     request<{ chatId: string }>(`/api/chat/group/${groupId}`, {
       method: 'POST',
       body: { content },
     }),
+  listConversations: () =>
+    request<{ conversations: Conversation[] }>('/api/chat').then((res) => res.conversations),
 };

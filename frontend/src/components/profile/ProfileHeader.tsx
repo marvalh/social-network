@@ -158,15 +158,13 @@ export function ProfileHeader({
               </>
             ) : (
               <>
-                {profile.isFollowing && (
-                  <Link
-                    href={`/messages/${user.userId}`}
-                    className={buttonVariants({ variant: 'secondary', size: 'lg' })}
-                  >
-                    <Mail className="h-4 w-4" />
-                    Message
-                  </Link>
-                )}
+                <Link
+                  href={`/messages/${user.userId}`}
+                  className={buttonVariants({ variant: 'secondary', size: 'lg' })}
+                >
+                  <Mail className="h-4 w-4" />
+                  Message
+                </Link>
                 <FollowButton
                   userId={user.userId}
                   status={profile.followStatus}
