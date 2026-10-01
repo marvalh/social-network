@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"social-network-test/pkg/auth"
 	"social-network-test/pkg/db/queries"
@@ -70,6 +71,7 @@ func SendMessageHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			SenderID:   senderID,
 			ReceiverID: receiverID,
 			Content:    req.Content,
+			CreatedAt:  time.Now(),
 		}
 		hub.SendToUser(receiverID, message)
 
@@ -140,10 +142,11 @@ func SendGroupMessageHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 		}
 
 		message := models.GroupMessage{
-			ChatID:   chatID,
-			SenderID: senderID,
-			GroupID:  groupID,
-			Content:  req.Content,
+			ChatID:    chatID,
+			SenderID:  senderID,
+			GroupID:   groupID,
+			Content:   req.Content,
+			CreatedAt: time.Now(),
 		}
 
 		if members, err := queries.ListGroupMembers(db, groupID); err == nil {
@@ -189,5 +192,23 @@ func GetGroupMessagesHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"messages": messages})
+	}
+}
+
+func ListConversationsHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+
+		conversations, err := queries.ListConversations(db, userID)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"conversations": conversations})
 	}
 }

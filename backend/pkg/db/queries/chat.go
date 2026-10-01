@@ -80,3 +80,39 @@ func ListGroupMessages(db *sql.DB, groupID string) ([]models.GroupMessage, error
 	}
 	return messages, rows.Err()
 }
+
+func ListConversations(db *sql.DB, userID string) ([]models.ConversationSummary, error) {
+	rows, err := db.Query(
+		`SELECT u.user_id, u.first_name, u.last_name, u.avatar,
+		        c.content, c.created_at
+		 FROM users u
+		 JOIN (
+		     SELECT
+		         CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END AS other_id,
+		         content, created_at,
+		         ROW_NUMBER() OVER (
+		             PARTITION BY CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END
+		             ORDER BY created_at DESC
+		         ) AS rn
+		     FROM chat
+		     WHERE sender_id = ? OR receiver_id = ?
+		 ) c ON c.other_id = u.user_id AND c.rn = 1
+		 ORDER BY c.created_at DESC`,
+		userID, userID, userID, userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	conversations := []models.ConversationSummary{}
+	for rows.Next() {
+		var c models.ConversationSummary
+		if err := rows.Scan(&c.UserID, &c.FirstName, &c.LastName, &c.Avatar,
+			&c.LastMessage, &c.LastMessageAt); err != nil {
+			return nil, err
+		}
+		conversations = append(conversations, c)
+	}
+	return conversations, rows.Err()
+}

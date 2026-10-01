@@ -39,13 +39,15 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("GET /api/follow-requests/pending", auth.RequireAuth(db, follow.GetPendingRequestsHandler(db)))
 
 	// websocket connection endpoint (chat + notifications)
-	mux.Handle("GET /ws", auth.RequireAuth(db, ws.UpgradeHandler(hub)))
+	mux.Handle("GET /ws", auth.RequireAuth(db, ws.UpgradeHandler(hub, db)))
+	mux.Handle("GET /api/chat", auth.RequireAuth(db, chat.ListConversationsHandler(db)))
 	mux.Handle("POST /api/chat/{userId}", auth.RequireAuth(db, chat.SendMessageHandler(db, hub)))
 	mux.Handle("GET /api/chat/{userId}", auth.RequireAuth(db, chat.GetConversationHandler(db)))
 	mux.Handle("POST /api/chat/group/{groupId}", auth.RequireAuth(db, chat.SendGroupMessageHandler(db, hub)))
 	mux.Handle("GET /api/chat/group/{groupId}", auth.RequireAuth(db, chat.GetGroupMessagesHandler(db)))
 	mux.Handle("GET /api/notifications", auth.RequireAuth(db, notifications.ListNotificationsHandler(db)))
 	mux.Handle("PATCH /api/notifications/{id}/read", auth.RequireAuth(db, notifications.MarkReadHandler(db)))
+
 	// groups
 	mux.Handle("POST /api/groups", auth.RequireAuth(db, groups.CreateGroupHandler(db)))
 	mux.Handle("GET /api/groups", auth.RequireAuth(db, groups.ListBrowsableGroupsHandler(db)))

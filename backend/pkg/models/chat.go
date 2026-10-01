@@ -26,3 +26,12 @@ type GroupMessage struct {
 type SendMessageRequest struct {
 	Content string `json:"content"`
 }
+
+type ConversationSummary struct {
+	UserID        string    `json:"userId"`
+	FirstName     string    `json:"firstName"`
+	LastName      string    `json:"lastName"`
+	Avatar        *string   `json:"avatar,omitempty"`
+	LastMessage   string    `json:"lastMessage"`
+	LastMessageAt time.Time `json:"lastMessageAt"`
+}
