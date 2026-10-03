@@ -510,3 +510,20 @@ func RespondToEventHandler(db *sql.DB) http.HandlerFunc {
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "responded"})
 	}
 }
+
+func ListMyGroupsHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+
+		groups, err := queries.ListMyGroups(db, userID)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"groups": groups})
+	}
+}

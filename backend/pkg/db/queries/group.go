@@ -55,7 +55,7 @@ func ListBrowsableGroups(db *sql.DB, viewerID string) ([]models.GroupSummary, er
 	}
 	defer rows.Close()
 
-	var groups []models.GroupSummary
+	groups := []models.GroupSummary{}
 	for rows.Next() {
 		var g models.GroupSummary
 		if err := rows.Scan(&g.GroupID, &g.CreatorID, &g.Title, &g.Description, &g.CreatedAt, &g.MemberCount); err != nil {
@@ -119,7 +119,7 @@ func ListPendingInvites(db *sql.DB, userID string) ([]models.GroupInvite, error)
 	}
 	defer rows.Close()
 
-	var invites []models.GroupInvite
+	invites := []models.GroupInvite{}
 	for rows.Next() {
 		var inv models.GroupInvite
 		if err := rows.Scan(&inv.InviteID, &inv.GroupID, &inv.InvitedBy, &inv.InvitedTo, &inv.Status, &inv.CreatedAt); err != nil {
@@ -190,7 +190,7 @@ func ListGroupMembers(db *sql.DB, groupID string) ([]models.GroupMember, error) 
 	}
 	defer rows.Close()
 
-	var members []models.GroupMember
+	members := []models.GroupMember{}
 	for rows.Next() {
 		var m models.GroupMember
 		if err := rows.Scan(&m.UserID, &m.JoinedAt); err != nil {
@@ -248,7 +248,7 @@ func ListPendingJoinRequests(db *sql.DB, groupID string) ([]models.GroupJoinRequ
 	}
 	defer rows.Close()
 
-	var requests []models.GroupJoinRequest
+	requests := []models.GroupJoinRequest{}
 	for rows.Next() {
 		var jr models.GroupJoinRequest
 		if err := rows.Scan(&jr.GroupID, &jr.RequestedBy, &jr.Status, &jr.CreatedAt); err != nil {
@@ -279,4 +279,29 @@ func RespondToJoinRequest(db *sql.DB, groupID, requestedBy string, accept bool) 
 		}
 	}
 	return nil
+}
+
+func ListMyGroups(db *sql.DB, userID string) ([]models.GroupSummary, error) {
+	rows, err := db.Query(
+		`SELECT g.group_id, g.creator_id, g.title, g.grp_desc, g.created_at,
+		        (SELECT COUNT(*) FROM group_members WHERE group_id = g.group_id) AS member_count
+		 FROM groups g
+		 JOIN group_members gm ON gm.group_id = g.group_id AND gm.members_id = ?
+		 ORDER BY g.created_at DESC`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	groups := []models.GroupSummary{}
+	for rows.Next() {
+		var g models.GroupSummary
+		if err := rows.Scan(&g.GroupID, &g.CreatorID, &g.Title, &g.Description, &g.CreatedAt, &g.MemberCount); err != nil {
+			return nil, err
+		}
+		groups = append(groups, g)
+	}
+	return groups, rows.Err()
 }

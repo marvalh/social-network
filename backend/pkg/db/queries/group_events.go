@@ -43,7 +43,7 @@ func ListGroupEvents(db *sql.DB, groupID, viewerID string) ([]models.GroupEvent,
 	}
 	defer rows.Close()
 
-	var events []models.GroupEvent
+	events := []models.GroupEvent{}
 	for rows.Next() {
 		var ev models.GroupEvent
 		var desc sql.NullString

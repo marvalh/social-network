@@ -65,6 +65,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("POST /api/groups/{id}/events", auth.RequireAuth(db, groups.CreateEventHandler(db, hub)))
 	mux.Handle("GET /api/groups/{id}/events", auth.RequireAuth(db, groups.ListGroupEventsHandler(db)))
 	mux.Handle("POST /api/events/{id}/respond", auth.RequireAuth(db, groups.RespondToEventHandler(db)))
+	mux.Handle("GET /api/groups/mine", auth.RequireAuth(db, groups.ListMyGroupsHandler(db)))
 
 	mux.Handle("POST /api/posts", auth.RequireAuth(db, posts.CreatePostHandler(db, hub)))
 	mux.Handle("GET /api/posts/{id}", auth.RequireAuth(db, posts.GetPostHandler(db)))
