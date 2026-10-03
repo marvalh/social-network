@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
 import { GroupsList } from '@/src/components/groups/GroupsList';
+import { MyGroupsList } from '@/src/components/groups/MyGroupsList';
 import { buttonVariants } from '@/components/ui/button';
 import { useRequireAuth } from '@/src/hooks/useRequireAuth';
 
@@ -19,13 +20,10 @@ export default function GroupsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Groups</h1>
-          <p className="text-sm text-muted-foreground">Join a group or start your own.</p>
+          <p className="text-sm text-muted-foreground">Your groups, and more to discover.</p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/groups/invites"
-            className={buttonVariants({ variant: 'secondary', size: 'sm' })}
-          >
+          <Link href="/groups/invites" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
             Invites
           </Link>
           <Link href="/groups/new" className={buttonVariants({ size: 'sm' })}>
@@ -36,7 +34,17 @@ export default function GroupsPage() {
       </div>
 
       <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">
-        <GroupsList />
+        <h2 className="text-sm font-semibold">My Groups</h2>
+        <div className="mt-3">
+          <MyGroupsList />
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">
+        <h2 className="text-sm font-semibold">Discover</h2>
+        <div className="mt-3">
+          <GroupsList />
+        </div>
       </div>
     </main>
   );

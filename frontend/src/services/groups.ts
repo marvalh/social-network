@@ -32,6 +32,8 @@ export const groupsApi = {
       body: payload,
     }),
 
+  mine: () => request<{ groups: GroupSummary[] }>('/api/groups/mine'),
+
   myInvites: () => request<{ invites: GroupInvite[] }>('/api/groups/invites'),
 
   respondToInvite: (inviteId: string, payload: RespondPayload) =>

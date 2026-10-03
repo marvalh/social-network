@@ -2,10 +2,10 @@
 
 import { use } from 'react';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
-import { GroupDetail } from '@/src/components/groups/GroupDetail';
+import { GroupEvents } from '@/src/components/groups/GroupEvents';
 import { useRequireAuth } from '@/src/hooks/useRequireAuth';
 
-export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function GroupEventsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { checking } = useRequireAuth();
 
@@ -15,7 +15,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
-      <GroupDetail groupId={id} />
+      <GroupEvents groupId={id} />
     </main>
   );
 }

@@ -110,10 +110,10 @@ export function FeedPage() {
             <Home className="size-4" /> Home
           </Link>
           <Link
-            href="/"
+            href="/groups"
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
           >
-            <Compass className="size-4" /> Discover
+            <Compass className="size-4" /> Groups
           </Link>
           <Link
             href="/people"
