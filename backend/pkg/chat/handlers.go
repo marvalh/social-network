@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"social-network-test/pkg/auth"
@@ -210,5 +211,34 @@ func ListConversationsHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"conversations": conversations})
+	}
+}
+
+func SearchUsersInChatHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+
+		query := strings.TrimSpace(r.URL.Query().Get("q"))
+		if query == "" {
+			helpers.SendJSON(w, http.StatusOK, map[string]any{"users": []models.UserResponse{}})
+			return
+		}
+
+		users, err := queries.SearchUsersInChat(db, query, userID, 10)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+
+		results := make([]models.UserResponse, 0, len(users))
+		for _, u := range users {
+			results = append(results, u.Sanitize())
+		}
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"users": results})
 	}
 }

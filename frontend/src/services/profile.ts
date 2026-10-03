@@ -29,4 +29,11 @@ export const profileApi = {
   },
 
   removeAvatar: () => request<{ status: string }>('/api/profile/me/avatar', { method: 'DELETE' }),
+
+  searchUsers: (query: string) =>
+    request<{ users: User[] }>(`/api/users/search?q=${encodeURIComponent(query)}`).then(
+      (r) => r.users
+    ),
+
+  suggestedUsers: () => request<{ users: User[] }>('/api/users/suggested').then((r) => r.users),
 };

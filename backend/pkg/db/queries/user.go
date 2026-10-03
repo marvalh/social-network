@@ -124,3 +124,54 @@ func UpdateUserPassword(db *sql.DB, userID string, hashedPassword string) error 
 	_, err := db.Exec(`UPDATE users SET password = ? WHERE user_id = ?`, hashedPassword, userID)
 	return err
 }
+
+func SearchUsers(db *sql.DB, query string, excludeUserID string, limit int) ([]models.User, error) {
+	pattern := "%" + query + "%"
+	rows, err := db.Query(
+		`SELECT user_id, email, password, first_name, last_name, dob,
+		        avatar, nickname, abt_me, is_public, created_at
+		 FROM users
+		 WHERE user_id != ?
+		   AND (first_name LIKE ? OR last_name LIKE ? OR nickname LIKE ?)
+		 LIMIT ?`,
+		excludeUserID, pattern, pattern, pattern, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		if err := rows.Scan(&u.UserID, &u.Email, &u.Password, &u.FirstName, &u.LastName, &u.DOB,
+			&u.Avatar, &u.Nickname, &u.AboutMe, &u.IsPublic, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+func SuggestedUsers(db *sql.DB, userID string, limit int) ([]models.User, error) {
+	rows, err := db.Query(
+		`SELECT u.user_id, u.email, u.first_name, u.last_name, u.dob,
+		        u.avatar, u.nickname, u.abt_me, u.is_public, u.created_at
+		 FROM users u
+		 WHERE u.user_id != ?
+		   AND NOT EXISTS (
+		       SELECT 1 FROM follows f
+		       WHERE f.follower_id = ? AND f.followee_id = u.user_id
+		   )
+		 ORDER BY (
+		     SELECT COUNT(*) FROM follows f2 WHERE f2.followee_id = u.user_id AND f2.status = 'accepted'
+		 ) DESC
+		 LIMIT ?`,
+		userID, userID, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanUserRows(rows)
+}
