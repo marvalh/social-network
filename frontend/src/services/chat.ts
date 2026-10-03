@@ -1,5 +1,6 @@
 import { request } from './http';
 import type { Message, GroupMessage, Conversation } from '@/src/types/chat';
+import type { User } from '@/src/types/user';
 
 export const chatApi = {
   getConversation: (userId: string) =>
@@ -21,4 +22,9 @@ export const chatApi = {
     }),
   listConversations: () =>
     request<{ conversations: Conversation[] }>('/api/chat').then((res) => res.conversations),
+
+  searchUsersInChat: (query: string) =>
+    request<{ users: User[] }>(`/api/chat/search?q=${encodeURIComponent(query)}`).then(
+      (r) => r.users
+    ),
 };

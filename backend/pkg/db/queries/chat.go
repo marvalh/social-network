@@ -45,6 +45,32 @@ func ListConversation(db *sql.DB, userA, userB string) ([]models.Message, error)
 	return messages, rows.Err()
 }
 
+func SearchUsersInChat(db *sql.DB, query string, userID string, limit int) ([]models.User, error) {
+	pattern := "%" + query + "%"
+	rows, err := db.Query(
+		`SELECT u.user_id, u.email, u.first_name, u.last_name, u.dob,
+		        u.avatar, u.nickname, u.abt_me, u.is_public, u.created_at
+		 FROM users u
+		 WHERE u.user_id != ?
+		   AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.nickname LIKE ?)
+		   AND (
+		       EXISTS (
+		           SELECT 1 FROM follows f
+		           WHERE f.status = 'accepted'
+		             AND ((f.follower_id = ? AND f.followee_id = u.user_id)
+		               OR (f.follower_id = u.user_id AND f.followee_id = ?))
+		       )
+		   )
+		 LIMIT ?`,
+		userID, pattern, pattern, pattern, userID, userID, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanUserRows(rows)
+}
+
 func InsertGroupMessage(db *sql.DB, groupID, senderID string, content string) (string, error) {
 	chatID := uuid.NewString()
 	_, err := db.Exec(

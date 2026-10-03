@@ -116,7 +116,7 @@ export function FeedPage() {
             <Compass className="size-4" /> Discover
           </Link>
           <Link
-            href="/"
+            href="/people"
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <Users className="size-4" /> People

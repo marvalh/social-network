@@ -3,6 +3,7 @@ package profile
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 
 	"social-network-test/pkg/auth"
 	"social-network-test/pkg/db/queries"
@@ -120,6 +121,58 @@ func resolveTargetID(r *http.Request, viewerID string) (string, error) {
 		return viewerID, nil
 	}
 	return parseID(idParam)
+}
+
+func SearchUsersHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		viewerID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+
+		query := strings.TrimSpace(r.URL.Query().Get("q"))
+		if query == "" {
+			helpers.SendJSON(w, http.StatusOK, map[string]any{"users": []models.UserResponse{}})
+			return
+		}
+
+		users, err := queries.SearchUsers(db, query, viewerID, 10)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+
+		results := make([]models.UserResponse, 0, len(users))
+		for _, u := range users {
+			results = append(results, u.Sanitize())
+		}
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"users": results})
+	}
+}
+
+func SuggestedUsersHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+
+		users, err := queries.SuggestedUsers(db, userID, 10)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+
+		results := make([]models.UserResponse, 0, len(users))
+		for _, u := range users {
+			results = append(results, u.Sanitize())
+		}
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"users": results})
+	}
 }
 
 func sanitizeAll(users []models.User) []models.UserResponse {

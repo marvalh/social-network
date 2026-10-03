@@ -25,8 +25,9 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("PATCH /api/profile/me/password", auth.RequireAuth(db, profile.UpdatePasswordHandler(db)))
 	mux.Handle("POST /api/profile/me/avatar", auth.RequireAuth(db, profile.UploadAvatarHandler(db)))
 	mux.Handle("DELETE /api/profile/me/avatar", auth.RequireAuth(db, profile.RemoveAvatarHandler(db)))
+	mux.Handle("GET /api/users/search", auth.RequireAuth(db, profile.SearchUsersHandler(db)))
+	mux.Handle("GET /api/users/suggested", auth.RequireAuth(db, profile.SuggestedUsersHandler(db)))
 
-	// not final routing (need to finalize http methods)
 	mux.Handle("GET /api/users/{id}/follow-status", auth.RequireAuth(db, follow.GetFollowStatusHandler(db)))
 	mux.Handle("GET /api/users/{id}/followers", auth.RequireAuth(db, follow.GetFollowersHandler(db)))
 	mux.Handle("GET /api/users/{id}/following", auth.RequireAuth(db, follow.GetFollowingHandler(db)))
@@ -47,6 +48,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("GET /api/chat/group/{groupId}", auth.RequireAuth(db, chat.GetGroupMessagesHandler(db)))
 	mux.Handle("GET /api/notifications", auth.RequireAuth(db, notifications.ListNotificationsHandler(db)))
 	mux.Handle("PATCH /api/notifications/{id}/read", auth.RequireAuth(db, notifications.MarkReadHandler(db)))
+	mux.Handle("GET /api/chat/search", auth.RequireAuth(db, chat.SearchUsersInChatHandler(db)))
 
 	// groups
 	mux.Handle("POST /api/groups", auth.RequireAuth(db, groups.CreateGroupHandler(db)))
