@@ -97,7 +97,8 @@ export function ChatWindow({ otherUserId }: ChatWindowProps) {
       <div className="flex items-center gap-3 border-b border-border px-4 py-3">
         <Link
           href="/messages"
-          className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
+          aria-label="Back to messages"
+          className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
         </Link>

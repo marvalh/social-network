@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type { GroupDetail as GroupDetailType, GroupMember, GroupJoinRequest } from '@/src/types/group';
+import { BackLink } from '@/src/components/layout/BackLink';
 import { UserChip } from './UserChip';
 
 interface GroupDetailProps {
@@ -115,6 +116,8 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
 
   return (
     <div className="space-y-5">
+      <BackLink href="/groups" label="Groups" />
+
       <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">
         <div className="flex items-start justify-between gap-4">
           <div>

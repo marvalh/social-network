@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type { GroupEvent } from '@/src/types/group';
+import { BackLink } from '@/src/components/layout/BackLink';
 
 interface GroupEventsProps {
   groupId: string;
@@ -86,6 +87,8 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
 
   return (
     <div className="space-y-5">
+      <BackLink href={`/groups/${groupId}`} label="Group" />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Events</h1>
