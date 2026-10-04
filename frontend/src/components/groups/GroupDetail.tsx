@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type { GroupDetail as GroupDetailType, GroupMember, GroupJoinRequest } from '@/src/types/group';
 import { BackLink } from '@/src/components/layout/BackLink';
+import { StatusError, statusOf, type ErrorStatus } from '@/src/components/layout/StatusError'; // NEW
 import { UserChip } from './UserChip';
 
 interface GroupDetailProps {
@@ -25,6 +26,7 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
   const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailure, setLoadFailure] = useState<ErrorStatus | null>(null); // NEW
 
   const [inviteId, setInviteId] = useState('');
   const [inviting, setInviting] = useState(false);
@@ -37,6 +39,7 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
     async function load() {
       setLoading(true);
       setError(null);
+      setLoadFailure(null); // NEW
       try {
         const groupDetail = await groupsApi.get(groupId);
         setGroup(groupDetail);
@@ -51,7 +54,7 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
           }
         }
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Could not load this group.');
+        setLoadFailure(statusOf(err)); // CHANGED (was: setError(...))
       } finally {
         setLoading(false);
       }
@@ -109,7 +112,7 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (error && !group) return <p className="text-sm text-destructive">{error}</p>;
+  if (loadFailure && !group) return <StatusError status={loadFailure} />; // CHANGED (was: <p ...>{error}</p>)
   if (!group) return null;
 
   const isCreator = user?.userId === group.creatorId;
