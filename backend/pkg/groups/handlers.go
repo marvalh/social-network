@@ -202,7 +202,8 @@ func GetGroupHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
 		}
-		helpers.SendJSON(w, http.StatusOK, group)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(group)
 	}
 }
 
@@ -424,7 +425,7 @@ func CreateEventHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 				_ = notifications.Create(db, hub, m.UserID, "group_event", &eventID)
 			}
 		}
-		
+
 		helpers.SendJSON(w, http.StatusCreated, map[string]any{"eventId": eventID})
 	}
 }
