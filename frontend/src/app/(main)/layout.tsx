@@ -7,6 +7,7 @@ import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
 import { Sidebar } from '@/src/components/layout/Sidebar';
 import { Topbar } from '@/src/components/layout/Topbar';
 import { NotificationsProvider } from '@/src/context/Notifications';
+import { ConnectionBanner } from '@/src/components/layout/ConnectionBanner';
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -22,6 +23,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-canvas">
       <NotificationsProvider>
         <Topbar />
+        <ConnectionBanner />
         <div className="mx-auto flex max-w-7xl flex-col px-2 pb-16 sm:px-6 lg:flex-row lg:gap-6 lg:pb-0">
           <Sidebar />
           <div className="min-w-0 flex-1">{children}</div>
