@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/src/context/Auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -149,6 +149,17 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
               Events
             </span>
             <span className="text-muted-foreground">View all →</span>
+          </Link>
+
+          <Link
+            href={`/groups/${groupId}/chat`}
+            className="flex items-center justify-between rounded-2xl bg-card p-4 text-sm font-medium ring-1 ring-white/10 hover:bg-muted"
+          >
+            <span className="flex items-center gap-2">
+              <MessageCircle className="size-4 text-brand-400" />
+              Group chat
+            </span>
+            <span className="text-muted-foreground">Open →</span>
           </Link>
 
           <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">

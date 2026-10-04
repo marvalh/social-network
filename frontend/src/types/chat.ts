@@ -49,3 +49,14 @@ export function isTypingEvent(data: unknown): data is TypingEvent {
     'senderId' in data
   );
 }
+
+export function isGroupChatMessage(data: unknown): data is GroupMessage {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'chatId' in data &&
+    'senderId' in data &&
+    'groupId' in data &&
+    !('receiverId' in data)
+  );
+}
