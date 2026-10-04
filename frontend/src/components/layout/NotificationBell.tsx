@@ -7,7 +7,7 @@ import { useNotifications } from '@/src/context/Notifications';
 import { NotificationItem } from '@/src/components/notifications/NotificationItem';
 
 export function NotificationBell() {
-  const { notifications, unreadCount, markRead } = useNotifications();
+  const { notifications, unreadCount, error, markRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +46,11 @@ export function NotificationBell() {
           </div>
 
           {recent.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Nothing yet.</p>
+            error ? (
+              <p className="px-4 py-8 text-center text-sm text-destructive">{error}</p>
+            ) : (
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">Nothing yet.</p>
+            )
           ) : (
             <ul className="max-h-96 overflow-y-auto">
               {recent.map((notification) => (

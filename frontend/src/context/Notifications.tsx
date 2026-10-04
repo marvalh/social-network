@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from './Auth';
 import { useSocket } from './Socket';
-import { notificationsApi } from '@/src/services/api';
+import { ApiError, notificationsApi } from '@/src/services/api';
 import type { Notification, NotificationPush } from '@/src/types/notification';
 
 function isNotificationPush(data: unknown): data is NotificationPush {
@@ -21,6 +21,7 @@ interface NotificationsContextValue {
   notifications: Notification[];
   unreadCount: number;
   loading: boolean;
+  error: string | null;
   markRead: (notifId: string) => Promise<void>;
 }
 
@@ -32,21 +33,21 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const res = await notificationsApi.list();
-    setNotifications(res.notifications);
-    setUnreadCount(res.unreadCount);
+    try {
+      const res = await notificationsApi.list();
+      setNotifications(res.notifications);
+      setUnreadCount(res.unreadCount);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load notifications.');
+    }
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      setNotifications([]);
-      setUnreadCount(0);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
+    if (!user) return;
     refresh().finally(() => setLoading(false));
   }, [user, refresh]);
 
@@ -59,15 +60,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [subscribe, refresh]);
 
   const markRead = useCallback(async (notifId: string) => {
-    await notificationsApi.markRead(notifId);
-    setNotifications((prev) =>
-      prev.map((n) => (n.notifId === notifId ? { ...n, isRead: true } : n))
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+    try {
+      await notificationsApi.markRead(notifId);
+      setNotifications((prev) =>
+        prev.map((n) => (n.notifId === notifId ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // leave it unread so the user can click it again
+    }
   }, []);
 
   return (
-    <NotificationsContext.Provider value={{ notifications, unreadCount, loading, markRead }}>
+    <NotificationsContext.Provider value={{ notifications, unreadCount, loading, error, markRead }}>
       {children}
     </NotificationsContext.Provider>
   );

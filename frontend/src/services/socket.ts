@@ -56,7 +56,13 @@ export function connectSocket(
     disconnect() {
       stopped = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      socket?.close();
+      const current = socket;
+      if (!current) return;
+      if (current.readyState === WebSocket.CONNECTING) {
+        current.onopen = () => current.close();
+      } else {
+        current.close();
+      }
     },
   };
 }
