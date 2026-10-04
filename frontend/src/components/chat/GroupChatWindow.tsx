@@ -11,6 +11,7 @@ import type { GroupDetail as GroupDetailType } from '@/src/types/group';
 import { GroupMessageBubble } from './GroupMessageBubble';
 import { MessageComposer } from './MessageComposer';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
+import { StatusError, statusOf, type ErrorStatus } from '@/src/components/layout/StatusError';
 
 const TYPING_SEND_INTERVAL_MS = 2000;
 const TYPING_INDICATOR_TIMEOUT_MS = 3000;
@@ -27,7 +28,7 @@ export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
   const [names, setNames] = useState<Record<string, string>>({});
   const [typingIds, setTypingIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadFailure, setLoadFailure] = useState<ErrorStatus | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const requestedNamesRef = useRef<Set<string>>(new Set());
   const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -56,7 +57,7 @@ export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
           setMessages(await chatApi.getGroupMessages(groupId));
         }
       })
-      .catch(() => setError('Could not load this group chat.'))
+      .catch((err) => setLoadFailure(statusOf(err)))
       .finally(() => setLoading(false));
   }, [groupId]);
 
@@ -129,6 +130,8 @@ export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
     send({ type: 'typing', groupId });
   }
 
+  if (loadFailure) return <StatusError status={loadFailure} />;
+
   const typingNames = typingIds.map((id) => names[id] ?? 'Someone');
   let typingText = '';
   if (typingNames.length === 1) {
@@ -155,8 +158,6 @@ export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {loading ? (
           <FullPageSpinner />
-        ) : error ? (
-          <p className="py-8 text-center text-sm text-destructive">{error}</p>
         ) : group && !group.isMember ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             Join this group to see its chat.

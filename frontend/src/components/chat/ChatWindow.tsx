@@ -11,6 +11,7 @@ import { mediaUrl } from '@/src/utils/media';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
+import { StatusError, statusOf, type ErrorStatus } from '@/src/components/layout/StatusError';
 
 const TYPING_SEND_INTERVAL_MS = 2000;
 const TYPING_INDICATOR_TIMEOUT_MS = 3000;
@@ -26,7 +27,7 @@ export function ChatWindow({ otherUserId }: ChatWindowProps) {
   const [otherAvatar, setOtherAvatar] = useState<string | undefined>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadFailure, setLoadFailure] = useState<ErrorStatus | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,7 +40,7 @@ export function ChatWindow({ otherUserId }: ChatWindowProps) {
         setOtherAvatar(profile.user.avatar);
         setMessages(history);
       })
-      .catch(() => setError('Could not load this conversation.'))
+      .catch((err) => setLoadFailure(statusOf(err)))
       .finally(() => setLoading(false));
   }, [otherUserId]);
 
@@ -90,6 +91,8 @@ export function ChatWindow({ otherUserId }: ChatWindowProps) {
     send({ type: 'typing', receiverId: otherUserId });
   }
 
+  if (loadFailure) return <StatusError status={loadFailure} />;
+
   const avatarUrl = mediaUrl(otherAvatar);
 
   return (
@@ -115,8 +118,6 @@ export function ChatWindow({ otherUserId }: ChatWindowProps) {
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {loading ? (
           <FullPageSpinner />
-        ) : error ? (
-          <p className="py-8 text-center text-sm text-destructive">{error}</p>
         ) : messages.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             Say hello to start the conversation.

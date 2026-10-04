@@ -1,14 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, profileApi } from '@/src/services/api';
+import { profileApi } from '@/src/services/api';
+import { statusOf, type ErrorStatus } from '@/src/components/layout/StatusError';
 import type { Profile } from '@/src/types/user';
 
 interface UseProfileResult {
   profile: Profile | null;
   loading: boolean;
-  error: string | null;
-  notFound: boolean;
+  failure: ErrorStatus | null;
   /** Re-fetches from the server (after following, editing, etc.). */
   refresh: () => Promise<void>;
   /** Local patch so the UI can update without a round trip. */
@@ -18,24 +18,15 @@ interface UseProfileResult {
 export function useProfile(id: string): UseProfileResult {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const [failure, setFailure] = useState<ErrorStatus | null>(null);
 
   const load = useCallback(async () => {
     try {
       const data = await profileApi.get(id);
       setProfile(data);
-      setError(null);
-      setNotFound(false);
+      setFailure(null);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 404) {
-        setNotFound(true);
-        setError(null);
-      } else if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError('Could not reach the server. Try again.');
-      }
+      setFailure(statusOf(err));
       setProfile(null);
     }
   }, [id]);
@@ -66,5 +57,5 @@ export function useProfile(id: string): UseProfileResult {
     setProfile((current) => (current ? { ...current, ...next } : current));
   }, []);
 
-  return { profile, loading, error, notFound, refresh, patch };
+  return { profile, loading, failure, refresh, patch };
 }

@@ -11,6 +11,7 @@ import { isPostRealtimeEvent, type Comment, type Post } from '@/src/types/post';
 import { CommentItem } from '@/src/components/feed/CommentItem';
 import { PostCard } from '@/src/components/feed/PostCard';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
+import { StatusError, statusOf, type ErrorStatus } from '@/src/components/layout/StatusError';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
@@ -25,7 +26,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   const [imgPreview, setImgPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadFailure, setLoadFailure] = useState<ErrorStatus | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -36,7 +37,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
           setPost(loadedPost);
           setComments(loadedComments);
         })
-        .catch(() => setLoadError('This post is unavailable.'))
+        .catch((err) => setLoadFailure(statusOf(err)))
     );
   }, [params]);
 
@@ -132,7 +133,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
     router.replace('/');
   }
 
-  if (!post && !loadError) return <FullPageSpinner />;
+  if (!post && !loadFailure) return <FullPageSpinner />;
 
   return (
     <main className="min-h-screen bg-canvas">
@@ -143,10 +144,8 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
         >
           <ArrowLeft className="size-4" /> Back to feed
         </Link>
-        {loadError ? (
-          <div className="rounded-xl border border-border bg-card p-8 text-center text-destructive">
-            {loadError}
-          </div>
+        {loadFailure ? (
+          <StatusError status={loadFailure} />
         ) : (
           post && (
             <div className="overflow-hidden rounded-xl border border-border">

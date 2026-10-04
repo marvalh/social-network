@@ -3,6 +3,7 @@
 import { use, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
+import { StatusError } from '@/src/components/layout/StatusError';
 import { ChangePasswordModal } from '@/src/components/profile/ChangePasswordModal';
 import { EditProfileModal } from '@/src/components/profile/EditProfileModal';
 import { PrivateNotice } from '@/src/components/profile/PrivateNotice';
@@ -17,7 +18,7 @@ import type { FollowStatus, User } from '@/src/types/user';
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { checking } = useRequireAuth();
-  const { profile, loading, error, notFound, refresh, patch } = useProfile(id);
+  const { profile, loading, failure, refresh, patch } = useProfile(id);
 
   const [tab, setTab] = useState<TabKey>('posts');
   const [editing, setEditing] = useState(false);
@@ -28,12 +29,8 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     return <FullPageSpinner />;
   }
 
-  if (notFound) {
-    return <Message title="User not found" body="This profile doesn't exist or was removed." />;
-  }
-
-  if (error || !profile) {
-    return <Message title="Something went wrong" body={error ?? 'Try again in a moment.'} />;
+  if (failure || !profile) {
+    return <StatusError status={failure ?? 500} onRetry={refresh} />;
   }
 
   const { user, isOwner, canView } = profile;
@@ -149,14 +146,5 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         </>
       )}
     </main>
-  );
-}
-
-function Message({ title, body }: { title: string; body: string }) {
-  return (
-    <section className="flex flex-col items-center gap-2 rounded-2xl bg-card px-6 py-16 text-center ring-1 ring-white/10">
-      <h1 className="text-lg font-semibold">{title}</h1>
-      <p className="text-sm text-muted-foreground">{body}</p>
-    </section>
   );
 }
