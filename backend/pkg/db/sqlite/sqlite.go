@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -11,8 +13,12 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-//opens connection
+// opens connection
 func Connect(dbFile string) (*sql.DB, error) {
+	if err := os.MkdirAll(filepath.Dir(dbFile), 0o755); err != nil {
+		return nil, fmt.Errorf("sqlite: could not create data directory: %w", err)
+	}
+
 	conn, err := sql.Open("sqlite3", dbFile+"?_foreign_keys=on")
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: failed to open %s: %w", dbFile, err)
@@ -25,7 +31,7 @@ func Connect(dbFile string) (*sql.DB, error) {
 	return conn, nil
 }
 
-//applies schema changes
+// applies schema changes
 func Migrate(conn *sql.DB, dir string) error {
 	target, err := sqlite3.WithInstance(conn, &sqlite3.Config{})
 	if err != nil {
@@ -46,7 +52,7 @@ func Migrate(conn *sql.DB, dir string) error {
 	return nil
 }
 
-//handles both functions together 
+// handles both functions together
 func Setup(dbFile, migrationsDir string) (*sql.DB, error) {
 	conn, err := Connect(dbFile)
 	if err != nil {
