@@ -1,7 +1,5 @@
 'use client';
 
-import { Compass, Home, LogOut, Users } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +12,7 @@ import { PostCard } from './PostCard';
 import { PostComposer } from './PostComposer';
 
 export function FeedPage() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading } = useAuth();
   const { subscribe } = useSocket();
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -100,36 +98,7 @@ export function FeedPage() {
   if (loading || !user) return <FullPageSpinner />;
 
   return (
-    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[15rem_minmax(0,38rem)_17rem]">
-      <aside className="hidden lg:block">
-        <nav className="sticky top-24 space-y-1">
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2.5 text-sm font-medium text-brand-400"
-          >
-            <Home className="size-4" /> Home
-          </Link>
-          <Link
-            href="/groups"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <Compass className="size-4" /> Groups
-          </Link>
-          <Link
-            href="/people"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <Users className="size-4" /> People
-          </Link>
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 px-3 text-muted-foreground hover:text-foreground"
-            onClick={() => logout()}
-          >
-            <LogOut className="size-4" /> Log out
-          </Button>
-        </nav>
-      </aside>
+    <div className="grid grid-cols-1 gap-6 py-6 lg:grid-cols-[minmax(0,38rem)_17rem]">
       <main className="min-w-0 overflow-hidden rounded-xl border border-border shadow-2xl shadow-black/10">
         <div className="border-b border-border bg-card px-5 pt-5 sm:px-6">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-400">

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { MessageCircle, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useAuth } from '@/src/context/Auth';
 import { mediaUrl } from '@/src/utils/media';
 import { profileApi } from '@/src/services/api';
@@ -12,27 +12,35 @@ import { NotificationBell } from './NotificationBell';
 export function Topbar() {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState<{ query: string; users: User[] }>({
+    query: '',
+    users: [],
+  });
   const [open, setOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
+  const trimmed = query.trim();
+  const loading = trimmed !== '' && search.query !== trimmed;
+  const results = search.query === trimmed ? search.users : [];
+
   useEffect(() => {
-    if (query.trim() === '') {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
+    if (trimmed === '') return;
+    let cancelled = false;
     const timeout = setTimeout(() => {
       profileApi
-        .searchUsers(query.trim())
-        .then(setResults)
-        .catch(() => setResults([]))
-        .finally(() => setLoading(false));
+        .searchUsers(trimmed)
+        .then((users) => {
+          if (!cancelled) setSearch({ query: trimmed, users });
+        })
+        .catch(() => {
+          if (!cancelled) setSearch({ query: trimmed, users: [] });
+        });
     }, 300);
-    return () => clearTimeout(timeout);
-  }, [query]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [trimmed]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -71,7 +79,7 @@ export function Topbar() {
             />
           </div>
 
-          {open && query.trim() !== '' && (
+          {open && trimmed !== '' && (
             <div className="absolute top-full right-0 left-0 z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-surface-border bg-card shadow-lg">
               {loading && <p className="p-3 text-sm text-muted-foreground">Searching…</p>}
               {!loading && results.length === 0 && (
@@ -104,13 +112,6 @@ export function Topbar() {
 
         <nav className="ml-auto flex items-center gap-1">
           <NotificationBell />
-          <Link
-            href="/messages"
-            aria-label="Messages"
-            className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <MessageCircle className="size-4" />
-          </Link>
           <Link href={`/profile/${user.userId}`} className="ml-1">
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="size-8 rounded-full object-cover" />

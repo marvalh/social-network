@@ -140,7 +140,7 @@ export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-10rem)] flex-col rounded-2xl bg-card ring-1 ring-white/10">
+    <div className="flex h-[calc(100dvh-11rem)] flex-col rounded-2xl bg-card ring-1 ring-white/10 lg:h-[calc(100vh-10rem)]">
       <div className="flex items-center gap-3 border-b border-border px-4 py-3">
         <Link
           href={`/groups/${groupId}`}

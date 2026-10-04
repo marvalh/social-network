@@ -15,7 +15,7 @@ export default function MessageThreadPage({ params }: { params: Promise<{ userId
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
-      <ChatWindow otherUserId={userId} />
+      <ChatWindow key={userId} otherUserId={userId} />
     </main>
   );
 }
