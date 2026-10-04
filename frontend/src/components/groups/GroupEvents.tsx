@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type { GroupEvent } from '@/src/types/group';
 import { BackLink } from '@/src/components/layout/BackLink';
+import { StatusError, statusOf, type ErrorStatus } from '@/src/components/layout/StatusError';
 
 interface GroupEventsProps {
   groupId: string;
@@ -16,6 +17,7 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
   const [events, setEvents] = useState<GroupEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailure, setLoadFailure] = useState<ErrorStatus | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -32,10 +34,11 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
 
   function load() {
     setLoading(true);
+    setLoadFailure(null);
     groupsApi
       .events(groupId)
       .then((data) => setEvents(data.events))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load events.'))
+      .catch((err) => setLoadFailure(statusOf(err)))
       .finally(() => setLoading(false));
   }
 
@@ -84,6 +87,8 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
       setBusyId(null);
     }
   }
+
+  if (loadFailure) return <StatusError status={loadFailure} onRetry={load} />;
 
   return (
     <div className="space-y-5">
