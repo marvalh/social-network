@@ -3,11 +3,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { CalendarDays } from 'lucide-react';
 import { useAuth } from '@/src/context/Auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type { GroupDetail as GroupDetailType, GroupMember, GroupJoinRequest } from '@/src/types/group';
+import { UserChip } from './UserChip';
 
 interface GroupDetailProps {
   groupId: string;
@@ -140,9 +142,13 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
         <>
           <Link
             href={`/groups/${groupId}/events`}
-            className="block rounded-2xl bg-card p-4 text-sm font-medium ring-1 ring-white/10 hover:bg-muted"
+            className="flex items-center justify-between rounded-2xl bg-card p-4 text-sm font-medium ring-1 ring-white/10 hover:bg-muted"
           >
-            View Events →
+            <span className="flex items-center gap-2">
+              <CalendarDays className="size-4 text-brand-400" />
+              Events
+            </span>
+            <span className="text-muted-foreground">View all →</span>
           </Link>
 
           <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">
@@ -151,7 +157,7 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
               <Input
                 value={inviteId}
                 onChange={(e) => setInviteId(e.target.value)}
-                placeholder="User ID"
+                placeholder="User ID (the last part of their profile link)"
                 required
               />
               <Button type="submit" size="sm" disabled={inviting || !inviteId.trim()}>
@@ -170,7 +176,7 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
                     key={req.requestedBy}
                     className="flex items-center justify-between rounded-lg border border-surface-border bg-surface px-3 py-2"
                   >
-                    <span className="text-sm">{req.requestedBy}</span>
+                    <UserChip userId={req.requestedBy} />
                     <div className="flex gap-2">
                       <Button
                         size="sm"
@@ -197,10 +203,10 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
 
           <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">
             <h3 className="text-sm font-semibold">Members ({members.length})</h3>
-            <ul className="mt-2 space-y-2">
+            <ul className="mt-3 space-y-3">
               {members.map((m) => (
-                <li key={m.userId} className="text-sm text-muted-foreground">
-                  {m.userId}
+                <li key={m.userId}>
+                  <UserChip userId={m.userId} />
                 </li>
               ))}
             </ul>
