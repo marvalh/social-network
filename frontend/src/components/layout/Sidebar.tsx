@@ -31,9 +31,9 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: '/people',
-    label: 'Suggested users',
+    label: 'People',
     icon: UserPlus,
-    isActive: (p) => p.startsWith('/people'),
+    isActive: (p) => p.startsWith('/people') || p.startsWith('/follow'),
   },
 ];
 
