@@ -38,6 +38,7 @@ export function isChatMessage(data: unknown): data is Message {
 export interface TypingEvent {
   type: 'typing';
   senderId: string;
+  groupId?: string;
 }
 
 export function isTypingEvent(data: unknown): data is TypingEvent {
@@ -46,7 +47,19 @@ export function isTypingEvent(data: unknown): data is TypingEvent {
     data !== null &&
     'type' in data &&
     data.type === 'typing' &&
-    'senderId' in data
+    'senderId' in data &&
+    !('groupId' in data)
+  );
+}
+
+export function isGroupTypingEvent(data: unknown): data is TypingEvent & { groupId: string } {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'type' in data &&
+    data.type === 'typing' &&
+    'senderId' in data &&
+    'groupId' in data
   );
 }
 

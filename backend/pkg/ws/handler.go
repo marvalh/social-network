@@ -22,6 +22,7 @@ var upgrader = websocket.Upgrader{
 type clientMessage struct {
 	Type       string `json:"type"`
 	ReceiverID string `json:"receiverId"`
+	GroupID    string `json:"groupId"`
 }
 
 func UpgradeHandler(hub *Hub, db *sql.DB) http.HandlerFunc {
@@ -58,23 +59,56 @@ func handleClientMessage(db *sql.DB, hub *Hub, senderID string, raw []byte) {
 	if err := json.Unmarshal(raw, &msg); err != nil {
 		return
 	}
-	if msg.Type != "typing" || msg.ReceiverID == "" {
+	if msg.Type != "typing" {
 		return
 	}
 
-	canNotify, err := queries.IsFollowing(db, senderID, msg.ReceiverID)
+	if msg.GroupID != "" {
+		relayGroupTyping(db, hub, senderID, msg.GroupID)
+		return
+	}
+	if msg.ReceiverID != "" {
+		relayDirectTyping(db, hub, senderID, msg.ReceiverID)
+	}
+}
+
+func relayDirectTyping(db *sql.DB, hub *Hub, senderID, receiverID string) {
+	canNotify, err := queries.IsFollowing(db, senderID, receiverID)
 	if err != nil {
 		return
 	}
 	if !canNotify {
-		canNotify, err = queries.IsFollowing(db, msg.ReceiverID, senderID)
+		canNotify, err = queries.IsFollowing(db, receiverID, senderID)
 		if err != nil || !canNotify {
 			return
 		}
 	}
 
-	hub.SendToUser(msg.ReceiverID, map[string]any{
+	hub.SendToUser(receiverID, map[string]any{
 		"type":     "typing",
 		"senderId": senderID,
 	})
+}
+
+func relayGroupTyping(db *sql.DB, hub *Hub, senderID, groupID string) {
+	isMember, err := queries.IsGroupMember(db, groupID, senderID)
+	if err != nil || !isMember {
+		return
+	}
+
+	members, err := queries.ListGroupMembers(db, groupID)
+	if err != nil {
+		return
+	}
+
+	for _, m := range members {
+		if m.UserID == senderID {
+			continue
+		}
+		hub.SendToUser(m.UserID, map[string]any{
+			"type":     "typing",
+			"senderId": senderID,
+			"groupId":  groupID,
+		})
+	}
 }

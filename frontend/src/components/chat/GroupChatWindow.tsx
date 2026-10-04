@@ -1,16 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/src/context/Auth';
 import { useSocket } from '@/src/context/Socket';
 import { chatApi, groupsApi, profileApi } from '@/src/services/api';
-import { isGroupChatMessage, type GroupMessage } from '@/src/types/chat';
+import { isGroupChatMessage, isGroupTypingEvent, type GroupMessage } from '@/src/types/chat';
 import type { GroupDetail as GroupDetailType } from '@/src/types/group';
 import { GroupMessageBubble } from './GroupMessageBubble';
 import { MessageComposer } from './MessageComposer';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
+
+const TYPING_SEND_INTERVAL_MS = 2000;
+const TYPING_INDICATOR_TIMEOUT_MS = 3000;
 
 interface GroupChatWindowProps {
   groupId: string;
@@ -18,14 +21,31 @@ interface GroupChatWindowProps {
 
 export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
   const { user } = useAuth();
-  const { subscribe } = useSocket();
+  const { subscribe, send } = useSocket();
   const [group, setGroup] = useState<GroupDetailType | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
+  const [typingIds, setTypingIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const requestedNamesRef = useRef<Set<string>>(new Set());
+  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const lastTypingSentRef = useRef(0);
+
+  const ensureName = useCallback((id: string) => {
+    if (requestedNamesRef.current.has(id)) return;
+    requestedNamesRef.current.add(id);
+    profileApi
+      .get(id)
+      .then((profile) =>
+        setNames((current) => ({
+          ...current,
+          [id]: `${profile.user.firstName} ${profile.user.lastName}`,
+        }))
+      )
+      .catch(() => setNames((current) => ({ ...current, [id]: 'Member' })));
+  }, []);
 
   useEffect(() => {
     groupsApi
@@ -41,29 +61,46 @@ export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
   }, [groupId]);
 
   useEffect(() => {
-    return subscribe((data) => {
+    const timers = typingTimersRef.current;
+
+    function stopTyping(id: string) {
+      const timer = timers.get(id);
+      if (timer) clearTimeout(timer);
+      timers.delete(id);
+      setTypingIds((current) => current.filter((x) => x !== id));
+    }
+
+    const unsubscribe = subscribe((data) => {
       if (isGroupChatMessage(data) && data.groupId === groupId) {
         setMessages((current) => [...current, data]);
+        stopTyping(data.senderId);
+      }
+      if (isGroupTypingEvent(data) && data.groupId === groupId) {
+        const id = data.senderId;
+        ensureName(id);
+        setTypingIds((current) => (current.includes(id) ? current : [...current, id]));
+        const existing = timers.get(id);
+        if (existing) clearTimeout(existing);
+        timers.set(
+          id,
+          setTimeout(() => stopTyping(id), TYPING_INDICATOR_TIMEOUT_MS)
+        );
       }
     });
-  }, [subscribe, groupId]);
+
+    return () => {
+      unsubscribe();
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+    };
+  }, [subscribe, groupId, ensureName]);
 
   useEffect(() => {
     for (const message of messages) {
-      const id = message.senderId;
-      if (id === user?.userId || requestedNamesRef.current.has(id)) continue;
-      requestedNamesRef.current.add(id);
-      profileApi
-        .get(id)
-        .then((profile) =>
-          setNames((current) => ({
-            ...current,
-            [id]: `${profile.user.firstName} ${profile.user.lastName}`,
-          }))
-        )
-        .catch(() => setNames((current) => ({ ...current, [id]: 'Member' })));
+      if (message.senderId === user?.userId) continue;
+      ensureName(message.senderId);
     }
-  }, [messages, user?.userId]);
+  }, [messages, user?.userId, ensureName]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -83,6 +120,23 @@ export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
         createdAt: new Date().toISOString(),
       },
     ]);
+  }
+
+  function handleTyping() {
+    const now = Date.now();
+    if (now - lastTypingSentRef.current < TYPING_SEND_INTERVAL_MS) return;
+    lastTypingSentRef.current = now;
+    send({ type: 'typing', groupId });
+  }
+
+  const typingNames = typingIds.map((id) => names[id] ?? 'Someone');
+  let typingText = '';
+  if (typingNames.length === 1) {
+    typingText = `${typingNames[0]} is typing…`;
+  } else if (typingNames.length === 2) {
+    typingText = `${typingNames[0]} and ${typingNames[1]} are typing…`;
+  } else if (typingNames.length > 2) {
+    typingText = 'Several people are typing…';
   }
 
   return (
@@ -124,7 +178,13 @@ export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
         <div ref={bottomRef} />
       </div>
 
-      {group?.isMember && <MessageComposer onSend={handleSend} />}
+      {typingText && (
+        <p className="px-4 pb-1 text-xs text-muted-foreground">
+          <span className="animate-pulse">{typingText}</span>
+        </p>
+      )}
+
+      {group?.isMember && <MessageComposer onSend={handleSend} onTyping={handleTyping} />}
     </div>
   );
 }
