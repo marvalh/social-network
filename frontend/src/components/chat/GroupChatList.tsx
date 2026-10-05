@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { UsersRound } from 'lucide-react';
+import { useLive } from '@/src/hooks/useLive';
 import { groupsApi } from '@/src/services/api';
 import type { GroupSummary } from '@/src/types/group';
 
@@ -11,6 +12,15 @@ export function GroupChatList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const reload = useCallback(() => {
+    groupsApi
+      .mine()
+      .then((res) => setGroups(res.groups))
+      .catch(() => {
+        // keep what is on screen if a background refresh fails
+      });
+  }, []);
+
   useEffect(() => {
     groupsApi
       .mine()
@@ -18,6 +28,8 @@ export function GroupChatList() {
       .catch(() => setError('Could not load your groups.'))
       .finally(() => setLoading(false));
   }, []);
+
+  useLive('groups', reload);
 
   if (loading) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Loading...</p>;

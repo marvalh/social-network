@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLive } from '@/src/hooks/useLive';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type { GroupEvent } from '@/src/types/group';
 import { BackLink } from '@/src/components/layout/BackLink';
@@ -28,19 +29,30 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
 
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const load = useCallback(
+    (silent = false) => {
+      if (!silent) {
+        setLoading(true);
+        setLoadFailure(null);
+      }
+      groupsApi
+        .events(groupId)
+        .then((data) => setEvents(data.events))
+        .catch((err) => {
+          if (!silent) setLoadFailure(statusOf(err));
+        })
+        .finally(() => {
+          if (!silent) setLoading(false);
+        });
+    },
+    [groupId]
+  );
+
   useEffect(() => {
     load();
-  }, [groupId]);
+  }, [load]);
 
-  function load() {
-    setLoading(true);
-    setLoadFailure(null);
-    groupsApi
-      .events(groupId)
-      .then((data) => setEvents(data.events))
-      .catch((err) => setLoadFailure(statusOf(err)))
-      .finally(() => setLoading(false));
-  }
+  useLive('groups', () => load(true), groupId);
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
@@ -55,7 +67,7 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
       setTitle('');
       setDescription('');
       setEventTime('');
-      load();
+      load(true);
     } catch (err) {
       setCreateError(err instanceof ApiError ? err.message : 'Could not create the event.');
     } finally {
@@ -88,7 +100,7 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
     }
   }
 
-  if (loadFailure) return <StatusError status={loadFailure} onRetry={load} />;
+  if (loadFailure) return <StatusError status={loadFailure} onRetry={() => load()} />;
 
   return (
     <div className="space-y-5">

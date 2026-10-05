@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useLive } from '@/src/hooks/useLive';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type { GroupInvite } from '@/src/types/group';
 
@@ -13,6 +14,15 @@ export function GroupInvitesList() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const reload = useCallback(() => {
+    groupsApi
+      .myInvites()
+      .then((data) => setInvites(data.invites))
+      .catch(() => {
+        // keep what is on screen if a background refresh fails
+      });
+  }, []);
+
   useEffect(() => {
     groupsApi
       .myInvites()
@@ -20,6 +30,8 @@ export function GroupInvitesList() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load invites.'))
       .finally(() => setLoading(false));
   }, []);
+
+  useLive('groups', reload);
 
   async function respond(inviteId: string, accept: boolean) {
     setBusyId(inviteId);
@@ -46,7 +58,10 @@ export function GroupInvitesList() {
           key={invite.inviteId}
           className="flex items-center justify-between rounded-lg border border-surface-border bg-surface px-3 py-2"
         >
-          <Link href={`/groups/${invite.groupId}`} className="text-sm underline-offset-2 hover:underline">
+          <Link
+            href={`/groups/${invite.groupId}`}
+            className="text-sm underline-offset-2 hover:underline"
+          >
             View group →
           </Link>
           <div className="flex gap-2">

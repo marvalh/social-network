@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/src/context/Auth';
 import { Button } from '@/components/ui/button';
+import { useLive } from '@/src/hooks/useLive';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type {
   GroupDetail as GroupDetailType,
@@ -35,11 +36,13 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
   const [actionBusy, setActionBusy] = useState(false);
   const [requested, setRequested] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
-      setLoadFailure(null);
+  const load = useCallback(
+    async (silent = false) => {
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+        setLoadFailure(null);
+      }
       try {
         const groupDetail = await groupsApi.get(groupId);
         setGroup(groupDetail);
@@ -54,13 +57,19 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
           }
         }
       } catch (err) {
-        setLoadFailure(statusOf(err));
+        if (!silent) setLoadFailure(statusOf(err));
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
-    }
+    },
+    [groupId, user]
+  );
+
+  useEffect(() => {
     load();
-  }, [groupId, user]);
+  }, [load]);
+
+  useLive('groups', () => load(true), groupId);
 
   async function handleRequestToJoin() {
     setActionBusy(true);

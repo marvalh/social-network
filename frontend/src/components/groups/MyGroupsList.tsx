@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useLive } from '@/src/hooks/useLive';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type { GroupSummary } from '@/src/types/group';
 
@@ -10,18 +11,31 @@ export function MyGroupsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const reload = useCallback(() => {
+    groupsApi
+      .mine()
+      .then((data) => setGroups(data.groups))
+      .catch(() => {
+        // keep what is on screen if a background refresh fails
+      });
+  }, []);
+
   useEffect(() => {
     groupsApi
       .mine()
       .then((data) => setGroups(data.groups))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your groups.'))
+      .catch((err) =>
+        setError(err instanceof ApiError ? err.message : 'Could not load your groups.')
+      )
       .finally(() => setLoading(false));
   }, []);
+
+  useLive('groups', reload);
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (groups.length === 0) {
-    return <p className="text-sm text-muted-foreground">You haven't joined any groups yet.</p>;
+    return <p className="text-sm text-muted-foreground">You haven&apos;t joined any groups yet.</p>;
   }
 
   return (

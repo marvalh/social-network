@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useLive } from '@/src/hooks/useLive';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type { GroupSummary } from '@/src/types/group';
 
@@ -13,6 +14,15 @@ export function GroupsList() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
 
+  const reload = useCallback(() => {
+    groupsApi
+      .browse()
+      .then((data) => setGroups(data.groups))
+      .catch(() => {
+        // keep what is on screen if a background refresh fails
+      });
+  }, []);
+
   useEffect(() => {
     groupsApi
       .browse()
@@ -20,6 +30,8 @@ export function GroupsList() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load groups.'))
       .finally(() => setLoading(false));
   }, []);
+
+  useLive('groups', reload);
 
   async function handleRequestToJoin(groupId: string) {
     setBusyId(groupId);
