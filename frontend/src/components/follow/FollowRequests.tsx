@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useLive } from '@/src/hooks/useLive';
 import { ApiError, followApi } from '@/src/services/api';
 import type { PendingFollowRequest } from '@/src/services/follow';
 
@@ -12,6 +13,15 @@ export function FollowRequestsList() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const reload = useCallback(() => {
+    followApi
+      .pendingRequests()
+      .then(setRequests)
+      .catch(() => {
+        // keep what is on screen if a background refresh fails
+      });
+  }, []);
+
   useEffect(() => {
     followApi
       .pendingRequests()
@@ -19,6 +29,8 @@ export function FollowRequestsList() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load requests.'))
       .finally(() => setLoading(false));
   }, []);
+
+  useLive('follow', reload);
 
   async function respond(requestId: string, action: 'accept' | 'decline') {
     setBusyId(requestId);

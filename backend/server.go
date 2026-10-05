@@ -26,7 +26,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	router.RegisterRoutes(mux, db, hub)
-	handler := middleware.CORS(mux)
+	handler := middleware.CORS(middleware.Live(hub, mux))
 
 	log.Println("Server starting on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", handler))

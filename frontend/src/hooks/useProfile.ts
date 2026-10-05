@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { profileApi } from '@/src/services/api';
+import { useLive } from '@/src/hooks/useLive';
 import { statusOf, type ErrorStatus } from '@/src/components/layout/StatusError';
 import type { Profile } from '@/src/types/user';
 
@@ -9,9 +10,9 @@ interface UseProfileResult {
   profile: Profile | null;
   loading: boolean;
   failure: ErrorStatus | null;
-  /** Re-fetches from the server (after following, editing, etc.). */
+
   refresh: () => Promise<void>;
-  /** Local patch so the UI can update without a round trip. */
+
   patch: (next: Partial<Profile>) => void;
 }
 
@@ -56,6 +57,10 @@ export function useProfile(id: string): UseProfileResult {
   const patch = useCallback((next: Partial<Profile>) => {
     setProfile((current) => (current ? { ...current, ...next } : current));
   }, []);
+
+  // Follows, accepts and profile edits anywhere can change what this page shows.
+  useLive('follow', refresh);
+  useLive('profile', refresh);
 
   return { profile, loading, failure, refresh, patch };
 }

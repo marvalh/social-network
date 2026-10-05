@@ -24,16 +24,13 @@ const SocketContext = createContext<SocketContextValue | undefined>(undefined);
 
 export function SocketProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const userId = user?.userId;
   const [connected, setConnected] = useState(false);
   const listenersRef = useRef<Set<SocketListener>>(new Set());
   const connectionRef = useRef<{ send: (data: unknown) => void } | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      setConnected(false);
-      connectionRef.current = null;
-      return;
-    }
+    if (!userId) return;
 
     const connection = connectSocket((data) => {
       listenersRef.current.forEach((listener) => listener(data));
@@ -44,8 +41,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     return () => {
       connection.disconnect();
       connectionRef.current = null;
+      setConnected(false);
     };
-  }, [user]);
+  }, [userId]);
 
   const subscribe = useMemo(
     () => (listener: SocketListener) => {

@@ -1,16 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useSocket } from '@/src/context/Socket';
 import { chatApi } from '@/src/services/api';
 import { mediaUrl } from '@/src/utils/media';
 import { relativeTime } from '@/src/utils/formatDate';
-import type { Conversation } from '@/src/types/chat';
+import { isChatMessage, type Conversation } from '@/src/types/chat';
 
 export function ConversationList() {
+  const { subscribe } = useSocket();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(() => {
+    chatApi
+      .listConversations()
+      .then(setConversations)
+      .catch(() => {
+        // keep what is on screen if a background refresh fails
+      });
+  }, []);
 
   useEffect(() => {
     chatApi
@@ -19,6 +30,12 @@ export function ConversationList() {
       .catch(() => setError('Could not load your conversations.'))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    return subscribe((data) => {
+      if (isChatMessage(data)) reload();
+    });
+  }, [subscribe, reload]);
 
   if (loading) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Loading...</p>;
@@ -47,7 +64,11 @@ export function ConversationList() {
               className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted"
             >
               {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="size-11 shrink-0 rounded-full object-cover" />
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="size-11 shrink-0 rounded-full object-cover"
+                />
               ) : (
                 <div className="grid size-11 shrink-0 place-items-center rounded-full bg-secondary text-sm font-semibold text-brand-400">
                   {conversation.firstName.charAt(0)}
@@ -57,9 +78,7 @@ export function ConversationList() {
                 <p className="truncate text-sm font-medium text-foreground">
                   {conversation.firstName} {conversation.lastName}
                 </p>
-                <p className="truncate text-sm text-muted-foreground">
-                  {conversation.lastMessage}
-                </p>
+                <p className="truncate text-sm text-muted-foreground">{conversation.lastMessage}</p>
               </div>
               <span className="shrink-0 text-xs text-muted-foreground">
                 {relativeTime(conversation.lastMessageAt)}

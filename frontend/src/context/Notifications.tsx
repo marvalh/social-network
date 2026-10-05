@@ -29,7 +29,7 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const { subscribe } = useSocket();
+  const { subscribe, connected } = useSocket();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -50,6 +50,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     refresh().finally(() => setLoading(false));
   }, [user, refresh]);
+
+  // Catch up on anything missed while the socket was down.
+  useEffect(() => {
+    if (connected) refresh();
+  }, [connected, refresh]);
+
+  // Catch up when the tab comes back into view.
+  useEffect(() => {
+    function handleVisible() {
+      if (document.visibilityState === 'visible') refresh();
+    }
+    document.addEventListener('visibilitychange', handleVisible);
+    return () => document.removeEventListener('visibilitychange', handleVisible);
+  }, [refresh]);
 
   useEffect(() => {
     return subscribe((data) => {

@@ -1,19 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, UserCheck } from 'lucide-react';
+import { useLive } from '@/src/hooks/useLive';
 import { followApi } from '@/src/services/api';
 
 export function FollowRequestsLink() {
   const [count, setCount] = useState(0);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     followApi
       .pendingRequests()
       .then((pending) => setCount(pending.length))
-      .catch(() => setCount(0));
+      .catch(() => {
+        // keep the last known count if a refresh fails
+      });
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useLive('follow', load);
 
   return (
     <Link

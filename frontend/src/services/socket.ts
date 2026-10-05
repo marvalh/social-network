@@ -19,13 +19,14 @@ export function connectSocket(
   let stopped = false;
 
   function open() {
-    socket = new WebSocket(`${WS_URL}/ws`);
+    const current = new WebSocket(`${WS_URL}/ws`);
+    socket = current;
 
-    socket.onopen = () => {
-      onStatusChange?.(true);
+    current.onopen = () => {
+      if (socket === current) onStatusChange?.(true);
     };
 
-    socket.onmessage = (event) => {
+    current.onmessage = (event) => {
       try {
         onMessage(JSON.parse(event.data));
       } catch {
@@ -33,15 +34,16 @@ export function connectSocket(
       }
     };
 
-    socket.onclose = () => {
+    current.onclose = () => {
+      if (socket !== current) return;
       onStatusChange?.(false);
       if (!stopped) {
         reconnectTimer = setTimeout(open, RECONNECT_DELAY_MS);
       }
     };
 
-    socket.onerror = () => {
-      socket?.close();
+    current.onerror = () => {
+      current.close();
     };
   }
 
@@ -57,6 +59,7 @@ export function connectSocket(
       stopped = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       const current = socket;
+      socket = null;
       if (!current) return;
       if (current.readyState === WebSocket.CONNECTING) {
         current.onopen = () => current.close();
