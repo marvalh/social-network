@@ -57,7 +57,7 @@ social-network/
 cd backend
 go mod download
  # running seed/main.go is optional, but recommended since it shows the full project functionality
-go run ./cmd/seed
+go run ./cmd/seed # check out the file to log-in with appropriate credentials
 go run .        # runs migrations automatically, serves on :8080
 ```
 

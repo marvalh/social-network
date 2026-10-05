@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { MessageCircle } from 'lucide-react';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
 import { ConversationList } from '@/src/components/chat/ConversationList';
 import { GroupChatList } from '@/src/components/chat/GroupChatList';
@@ -34,20 +35,7 @@ export default function MessagesPage() {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3.5">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-900/40 text-blue-300 ring-1 ring-blue-500/20">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.75}
-              stroke="currentColor"
-              className="h-6 w-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 0 1-.923 1.785A5.969 5.969 0 0 0 8.25 20c.846 0 1.666-.184 2.41-.515.526-.235 1.134-.176 1.34.765Z"
-              />
-            </svg>
+            <MessageCircle className="h-6 w-6" strokeWidth={1.75} />
           </div>
 
           <div>
@@ -80,7 +68,7 @@ export default function MessagesPage() {
                 </span>
               )}
               {tab === key && (
-                <span className="gradient absolute inset-x-3 -bottom-px h-0.5 rounded-full" />
+                <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-sky-500" />
               )}
             </button>
           ))}

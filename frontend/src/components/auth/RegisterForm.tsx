@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/src/services/api';
 import { useAuth } from '@/src/context/Auth';
-import {profileApi} from '@/src/services/profile'
+import { profileApi } from '@/src/services/profile';
 import { AuthHeading, CharCount, FormError } from './Authformparts';
 import {
   ABOUT_ME_MAX,
@@ -336,7 +336,10 @@ export function RegisterForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link href="/login" className="text-link hover:underline">
+        <Link
+          href="/login"
+          className="font-medium text-purple-400 hover:text-purple-300 hover:underline"
+        >
           Log in
         </Link>
       </p>
