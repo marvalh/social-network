@@ -216,13 +216,15 @@ func SendFollowRequestHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			if followID, err := queries.GetFollowID(db, followerID, followeeID); err == nil {
 				_ = notifications.Create(db, hub, followeeID, followerID, "follow_request", &followID)
 			}
+		} else {
+			_ = notifications.Create(db, hub, followeeID, followerID, "new_follower", nil)
 		}
 
 		helpers.SendJSON(w, http.StatusCreated, map[string]any{"status": status})
 	}
 }
 
-func AcceptRequestHandler(db *sql.DB) http.HandlerFunc {
+func AcceptRequestHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestID, err := parseID(r.PathValue("requestId"))
 		if err != nil {
@@ -248,9 +250,15 @@ func AcceptRequestHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		wasPending := follow.Status == "pending"
+
 		if err := queries.UpdateFollowStatus(db, requestID, "accepted"); err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
+		}
+
+		if wasPending {
+			_ = notifications.Create(db, hub, follow.FollowerID, userID, "follow_accepted", &requestID)
 		}
 
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "accepted"})

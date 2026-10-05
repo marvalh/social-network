@@ -13,6 +13,7 @@ import (
 	"social-network-test/pkg/errors"
 	"social-network-test/pkg/images"
 	"social-network-test/pkg/models"
+	"social-network-test/pkg/notifications"
 	"social-network-test/pkg/ws"
 
 	"github.com/google/uuid"
@@ -365,7 +366,8 @@ func LikePostHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			return
 		}
 
-		if _, err := queries.GetPostByID(db, postID, userID); err != nil {
+		post, err := queries.GetPostByID(db, postID, userID)
+		if err != nil {
 			errors.Handle(w, r, errors.NotFound("post not found"))
 			return
 		}
@@ -373,6 +375,7 @@ func LikePostHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			errors.Handle(w, r, errors.Internal("failed to like post"))
 			return
 		}
+		_ = notifications.Create(db, hub, post.UserID, userID, "post_like", &postID)
 		notifyPostAudience(db, hub, postID, "liked")
 		writeMessage(w, http.StatusOK, "liked")
 	}
@@ -417,7 +420,8 @@ func CreateCommentHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			return
 		}
 
-		if _, err := queries.GetPostByID(db, postID, userID); err != nil {
+		post, err := queries.GetPostByID(db, postID, userID)
+		if err != nil {
 			errors.Handle(w, r, errors.NotFound("post not found"))
 			return
 		}
@@ -452,6 +456,7 @@ func CreateCommentHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			errors.Handle(w, r, errors.Internal("failed to create comment"))
 			return
 		}
+		_ = notifications.Create(db, hub, post.UserID, userID, "post_comment", &postID)
 
 		comment, err := queries.GetCommentByID(db, commentID, userID)
 		if err != nil {
@@ -520,6 +525,9 @@ func LikeCommentHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 		postID, err := queries.GetCommentPostID(db, commentID)
 		if err == nil {
 			notifyPostAudience(db, hub, postID, "comment.liked")
+			if comment, cerr := queries.GetCommentByID(db, commentID, userID); cerr == nil {
+				_ = notifications.Create(db, hub, comment.UserID, userID, "comment_like", &postID)
+			}
 		}
 		writeMessage(w, http.StatusOK, "liked")
 	}

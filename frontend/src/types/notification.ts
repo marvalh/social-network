@@ -1,8 +1,13 @@
 export type NotificationType =
   | 'follow_request'
+  | 'follow_accepted'
+  | 'new_follower'
   | 'group_invite'
   | 'group_join_request'
-  | 'group_event';
+  | 'group_event'
+  | 'post_like'
+  | 'post_comment'
+  | 'comment_like';
 
 export interface Notification {
   notifId: string;

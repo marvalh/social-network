@@ -84,3 +84,16 @@ func UnreadCount(db *sql.DB, userID string) (int, error) {
 	).Scan(&count)
 	return count, err
 }
+
+// NotificationExists reports whether the same notification was already sent.
+func NotificationExists(db *sql.DB, userID, actorID, notifType string, referenceID *string) (bool, error) {
+	var exists bool
+	err := db.QueryRow(
+		`SELECT EXISTS(
+		     SELECT 1 FROM notifications
+		     WHERE user_id = ? AND actor_id = ? AND type = ? AND reference_id IS ?
+		 )`,
+		userID, actorID, notifType, referenceID,
+	).Scan(&exists)
+	return exists, err
+}

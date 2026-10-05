@@ -68,11 +68,26 @@ func MarkReadHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// Types that notify only once per person and target, so liking and unliking
+// over and over cannot spam someone.
+var oncePerActor = map[string]bool{
+	"post_like":    true,
+	"comment_like": true,
+	"new_follower": true,
+}
+
 // Create saves a notification and pushes it live if the user is connected.
 // actorID is who triggered it. Notifying yourself about your own action is skipped.
 func Create(db *sql.DB, hub *ws.Hub, userID, actorID, notifType string, referenceID *string) error {
 	if actorID != "" && actorID == userID {
 		return nil
+	}
+
+	if oncePerActor[notifType] {
+		exists, err := queries.NotificationExists(db, userID, actorID, notifType, referenceID)
+		if err == nil && exists {
+			return nil
+		}
 	}
 
 	notifID, err := queries.InsertNotification(db, userID, actorID, notifType, referenceID)
