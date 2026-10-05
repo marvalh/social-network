@@ -9,7 +9,7 @@ import (
 )
 
 func CreateUser(db *sql.DB, u models.User) (string, error) {
-	u.UserID = uuid.NewString();
+	u.UserID = uuid.NewString()
 	_, err := db.Exec(
 		`INSERT INTO users (user_id, email, password, first_name, last_name, dob, avatar, nickname, abt_me)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -132,9 +132,10 @@ func SearchUsers(db *sql.DB, query string, excludeUserID string, limit int) ([]m
 		        avatar, nickname, abt_me, is_public, created_at
 		 FROM users
 		 WHERE user_id != ?
-		   AND (first_name LIKE ? OR last_name LIKE ? OR nickname LIKE ?)
+		   AND (first_name LIKE ? OR last_name LIKE ? OR nickname LIKE ?
+		        OR (first_name || ' ' || last_name) LIKE ?)
 		 LIMIT ?`,
-		excludeUserID, pattern, pattern, pattern, limit,
+		excludeUserID, pattern, pattern, pattern, pattern, limit,
 	)
 	if err != nil {
 		return nil, err

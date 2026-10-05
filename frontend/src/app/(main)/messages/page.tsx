@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
 import { ConversationList } from '@/src/components/chat/ConversationList';
 import { GroupChatList } from '@/src/components/chat/GroupChatList';
+import { NewMessage } from '@/src/components/chat/NewMessage';
 import { useUnread } from '@/src/context/Unread';
 import { useRequireAuth } from '@/src/hooks/useRequireAuth';
 
@@ -30,9 +31,12 @@ export default function MessagesPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 space-y-5 px-4 py-6">
-      <div>
-        <h1 className="text-xl font-semibold">Messages</h1>
-        <p className="text-sm text-muted-foreground">Your conversations.</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Messages</h1>
+          <p className="text-sm text-muted-foreground">Your conversations.</p>
+        </div>
+        <NewMessage />
       </div>
 
       <div className="rounded-2xl bg-card ring-1 ring-white/10">

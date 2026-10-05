@@ -50,7 +50,7 @@ export function ConversationList() {
   if (conversations.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No conversations yet. Message someone you follow to start one.
+        No conversations yet. Use New message to start one.
       </p>
     );
   }

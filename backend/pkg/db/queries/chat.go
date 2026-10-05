@@ -52,7 +52,8 @@ func SearchUsersInChat(db *sql.DB, query string, userID string, limit int) ([]mo
 		        u.avatar, u.nickname, u.abt_me, u.is_public, u.created_at
 		 FROM users u
 		 WHERE u.user_id != ?
-		   AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.nickname LIKE ?)
+		   AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.nickname LIKE ?
+		        OR (u.first_name || ' ' || u.last_name) LIKE ?)
 		   AND (
 		       EXISTS (
 		           SELECT 1 FROM follows f
@@ -62,7 +63,7 @@ func SearchUsersInChat(db *sql.DB, query string, userID string, limit int) ([]mo
 		       )
 		   )
 		 LIMIT ?`,
-		userID, pattern, pattern, pattern, userID, userID, limit,
+		userID, pattern, pattern, pattern, pattern, userID, userID, limit,
 	)
 	if err != nil {
 		return nil, err
