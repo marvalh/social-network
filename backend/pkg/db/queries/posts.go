@@ -169,13 +169,18 @@ func GetFeed(db *sql.DB, viewerID string, limit, offset int) ([]models.Post, err
 		WHERE p.group_id IS NULL
 		AND (
 			p.user_id = ?
-			OR p.privacy = 'public'
-			OR (p.privacy = 'followers' AND p.user_id IN (
-				SELECT followee_id FROM follows WHERE follower_id = ? AND status = 'accepted'
-			))
-			OR (p.privacy = 'private' AND p.post_id IN (
-				SELECT post_id FROM post_visible_to WHERE user_id = ?
-			))
+			OR (
+				p.user_id IN (
+					SELECT followee_id FROM follows WHERE follower_id = ? AND status = 'accepted'
+				)
+				AND (
+					p.privacy = 'public'
+					OR p.privacy = 'followers'
+					OR (p.privacy = 'private' AND p.post_id IN (
+						SELECT post_id FROM post_visible_to WHERE user_id = ?
+					))
+				)
+			)
 		)
 		ORDER BY p.created_at DESC
 		LIMIT ? OFFSET ?
