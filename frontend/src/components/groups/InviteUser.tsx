@@ -11,9 +11,12 @@ import type { User } from '@/src/types/user';
 interface InviteUserProps {
   groupId: string;
   memberIds: string[];
+  /** People who already have an invite waiting. */
+  invitedIds: string[];
+  onInvited?: () => void;
 }
 
-export function InviteUser({ groupId, memberIds }: InviteUserProps) {
+export function InviteUser({ groupId, memberIds, invitedIds, onInvited }: InviteUserProps) {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState<{ query: string; users: User[] }>({
@@ -21,7 +24,6 @@ export function InviteUser({ groupId, memberIds }: InviteUserProps) {
     users: [],
   });
   const [open, setOpen] = useState(false);
-  const [invited, setInvited] = useState<string[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,8 +68,8 @@ export function InviteUser({ groupId, memberIds }: InviteUserProps) {
     setMessage(null);
     try {
       await groupsApi.sendInvite(groupId, { invitedTo: target.userId });
-      setInvited((current) => [...current, target.userId]);
       setMessage({ ok: true, text: `Invite sent to ${target.firstName} ${target.lastName}.` });
+      onInvited?.();
     } catch (err) {
       setMessage({
         ok: false,
@@ -107,7 +109,7 @@ export function InviteUser({ groupId, memberIds }: InviteUserProps) {
             )}
             {!searching &&
               results.map((result) => {
-                const done = invited.includes(result.userId);
+                const done = invitedIds.includes(result.userId);
                 return (
                   <div
                     key={result.userId}

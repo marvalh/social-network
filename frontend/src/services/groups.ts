@@ -61,4 +61,13 @@ export const groupsApi = {
 
   respondToEvent: (eventId: string, payload: RSVPPayload) =>
     request<void>(`/api/events/${eventId}/respond`, { method: 'POST', body: payload }),
+
+  cancelJoinRequest: (groupId: string) =>
+    request<void>(`/api/groups/${groupId}/join-requests/me`, { method: 'DELETE' }),
+
+  groupInvites: (groupId: string) =>
+    request<{ invites: GroupInvite[] }>(`/api/groups/${groupId}/invites`),
+
+  cancelInvite: (inviteId: string) =>
+    request<void>(`/api/invites/${inviteId}`, { method: 'DELETE' }),
 };

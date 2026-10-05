@@ -11,12 +11,14 @@ import { useLive } from '@/src/hooks/useLive';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type {
   GroupDetail as GroupDetailType,
+  GroupInvite,
   GroupMember,
   GroupJoinRequest,
 } from '@/src/types/group';
 import { BackLink } from '@/src/components/layout/BackLink';
 import { StatusError, statusOf, type ErrorStatus } from '@/src/components/layout/StatusError';
 import { InviteUser } from './InviteUser';
+import { PendingInvites } from './PendingInvites';
 import { UserChip } from './UserChip';
 
 interface GroupDetailProps {
@@ -30,12 +32,12 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
   const [group, setGroup] = useState<GroupDetailType | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<GroupInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadFailure, setLoadFailure] = useState<ErrorStatus | null>(null);
 
   const [actionBusy, setActionBusy] = useState(false);
-  const [requested, setRequested] = useState(false);
 
   const load = useCallback(
     async (silent = false) => {
@@ -51,6 +53,9 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
         if (groupDetail.isMember) {
           const { members } = await groupsApi.members(groupId);
           setMembers(members);
+
+          const { invites } = await groupsApi.groupInvites(groupId);
+          setPendingInvites(invites);
 
           if (user && groupDetail.creatorId === user.userId) {
             const { requests } = await groupsApi.joinRequests(groupId);
@@ -74,9 +79,23 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
 
   async function handleRequestToJoin() {
     setActionBusy(true);
+    setError(null);
     try {
       await groupsApi.requestToJoin(groupId);
-      setRequested(true);
+      setGroup((current) => (current ? { ...current, hasRequested: true } : current));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reach the server.');
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function handleCancelRequest() {
+    setActionBusy(true);
+    setError(null);
+    try {
+      await groupsApi.cancelJoinRequest(groupId);
+      setGroup((current) => (current ? { ...current, hasRequested: false } : current));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not reach the server.');
     } finally {
@@ -97,11 +116,13 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
 
   async function handleJoinRequestResponse(requestedBy: string, accept: boolean) {
     setActionBusy(true);
+    setError(null);
     try {
       await groupsApi.respondToJoinRequest(groupId, requestedBy, { accept });
       setJoinRequests((current) => current.filter((r) => r.requestedBy !== requestedBy));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not reach the server.');
+      load(true);
     } finally {
       setActionBusy(false);
     }
@@ -131,12 +152,26 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
             <Button size="sm" variant="ghost" disabled={actionBusy} onClick={handleLeave}>
               Leave
             </Button>
+          ) : group.hasRequested ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={actionBusy}
+              onClick={handleCancelRequest}
+            >
+              Cancel request
+            </Button>
           ) : (
-            <Button size="sm" disabled={actionBusy || requested} onClick={handleRequestToJoin}>
-              {requested ? 'Requested' : 'Request to Join'}
+            <Button size="sm" disabled={actionBusy} onClick={handleRequestToJoin}>
+              Request to Join
             </Button>
           )}
         </div>
+        {!group.isMember && group.hasRequested && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Request sent. Waiting for the creator to respond.
+          </p>
+        )}
         {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
       </div>
 
@@ -169,9 +204,20 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
           <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">
             <h3 className="text-sm font-semibold">Invite someone</h3>
             <div className="mt-2">
-              <InviteUser groupId={groupId} memberIds={members.map((m) => m.userId)} />
+              <InviteUser
+                groupId={groupId}
+                memberIds={members.map((m) => m.userId)}
+                invitedIds={pendingInvites.map((invite) => invite.invitedTo)}
+                onInvited={() => load(true)}
+              />
             </div>
           </div>
+
+          <PendingInvites
+            invites={pendingInvites}
+            creatorId={group.creatorId}
+            onChanged={() => load(true)}
+          />
 
           {isCreator && joinRequests.length > 0 && (
             <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">

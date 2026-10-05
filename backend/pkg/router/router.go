@@ -48,6 +48,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("GET /api/chat/group/{groupId}", auth.RequireAuth(db, chat.GetGroupMessagesHandler(db)))
 	mux.Handle("GET /api/notifications", auth.RequireAuth(db, notifications.ListNotificationsHandler(db)))
 	mux.Handle("PATCH /api/notifications/{id}/read", auth.RequireAuth(db, notifications.MarkReadHandler(db)))
+	mux.Handle("POST /api/notifications/read-all", auth.RequireAuth(db, notifications.MarkAllReadHandler(db, hub)))
 	mux.Handle("GET /api/chat/search", auth.RequireAuth(db, chat.SearchUsersInChatHandler(db)))
 	mux.Handle("GET /api/chat/unread", auth.RequireAuth(db, chat.UnreadSummaryHandler(db)))
 	mux.Handle("POST /api/chat/read/{userId}", auth.RequireAuth(db, chat.MarkConversationReadHandler(db, hub)))
@@ -69,6 +70,9 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("GET /api/groups/{id}/events", auth.RequireAuth(db, groups.ListGroupEventsHandler(db)))
 	mux.Handle("POST /api/events/{id}/respond", auth.RequireAuth(db, groups.RespondToEventHandler(db)))
 	mux.Handle("GET /api/groups/mine", auth.RequireAuth(db, groups.ListMyGroupsHandler(db)))
+	mux.Handle("GET /api/groups/{id}/invites", auth.RequireAuth(db, groups.ListGroupInvitesHandler(db)))
+	mux.Handle("DELETE /api/invites/{id}", auth.RequireAuth(db, groups.CancelInviteHandler(db, hub)))
+	mux.Handle("DELETE /api/groups/{id}/join-requests/me", auth.RequireAuth(db, groups.CancelJoinRequestHandler(db, hub)))
 
 	mux.Handle("POST /api/posts", auth.RequireAuth(db, posts.CreatePostHandler(db, hub)))
 	mux.Handle("GET /api/posts/{id}", auth.RequireAuth(db, posts.GetPostHandler(db)))

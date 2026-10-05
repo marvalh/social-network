@@ -5,6 +5,7 @@ export interface GroupSummary {
   description: string;
   createdAt: string;
   memberCount: number;
+  hasRequested?: boolean;
 }
 
 export interface GroupDetail extends GroupSummary {

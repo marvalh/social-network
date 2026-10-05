@@ -3,12 +3,13 @@ package models
 import "time"
 
 type GroupSummary struct {
-	GroupID     string    `json:"groupId"`
-	CreatorID   string    `json:"creatorId"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt"`
-	MemberCount int       `json:"memberCount"`
+	GroupID      string    `json:"groupId"`
+	CreatorID    string    `json:"creatorId"`
+	Title        string    `json:"title"`
+	Description  string    `json:"description"`
+	CreatedAt    time.Time `json:"createdAt"`
+	MemberCount  int       `json:"memberCount"`
+	HasRequested bool      `json:"hasRequested"`
 }
 
 type CreateGroupRequest struct {

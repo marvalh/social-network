@@ -97,3 +97,19 @@ func NotificationExists(db *sql.DB, userID, actorID, notifType string, reference
 	).Scan(&exists)
 	return exists, err
 }
+
+// DeleteNotification removes one notification, used when the thing it was about is withdrawn.
+func DeleteNotification(db *sql.DB, userID, actorID, notifType, referenceID string) error {
+	_, err := db.Exec(
+		`DELETE FROM notifications
+		 WHERE user_id = ? AND actor_id = ? AND type = ? AND reference_id = ?`,
+		userID, actorID, notifType, referenceID,
+	)
+	return err
+}
+
+// MarkAllRead marks every notification the user has as read.
+func MarkAllRead(db *sql.DB, userID string) error {
+	_, err := db.Exec(`UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0`, userID)
+	return err
+}

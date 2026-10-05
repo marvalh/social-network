@@ -36,11 +36,14 @@ func CreateGroup(db *sql.DB, creatorID, title, description string) (string, erro
 
 	return groupID, nil
 }
-
 func ListBrowsableGroups(db *sql.DB, viewerID string) ([]models.GroupSummary, error) {
 	rows, err := db.Query(
 		`SELECT g.group_id, g.creator_id, g.title, g.grp_desc, g.created_at,
-		        COUNT(gm.members_id) AS member_count
+		        COUNT(gm.members_id) AS member_count,
+		        EXISTS(
+		            SELECT 1 FROM group_join_request jr
+		            WHERE jr.group_id = g.group_id AND jr.requested_by = ? AND jr.status = 'pending'
+		        ) AS has_requested
 		 FROM groups g
 		 LEFT JOIN group_members gm ON gm.group_id = g.group_id
 		 WHERE g.group_id NOT IN (
@@ -48,7 +51,7 @@ func ListBrowsableGroups(db *sql.DB, viewerID string) ([]models.GroupSummary, er
 		 )
 		 GROUP BY g.group_id
 		 ORDER BY g.created_at DESC`,
-		viewerID,
+		viewerID, viewerID,
 	)
 	if err != nil {
 		return nil, err
@@ -58,7 +61,7 @@ func ListBrowsableGroups(db *sql.DB, viewerID string) ([]models.GroupSummary, er
 	groups := []models.GroupSummary{}
 	for rows.Next() {
 		var g models.GroupSummary
-		if err := rows.Scan(&g.GroupID, &g.CreatorID, &g.Title, &g.Description, &g.CreatedAt, &g.MemberCount); err != nil {
+		if err := rows.Scan(&g.GroupID, &g.CreatorID, &g.Title, &g.Description, &g.CreatedAt, &g.MemberCount, &g.HasRequested); err != nil {
 			return nil, err
 		}
 		groups = append(groups, g)
@@ -164,10 +167,11 @@ func GetGroupByID(db *sql.DB, groupID, viewerID string) (*models.GroupDetail, er
 	err := db.QueryRow(
 		`SELECT g.group_id, g.creator_id, g.title, g.grp_desc, g.created_at,
 		        (SELECT COUNT(*) FROM group_members WHERE group_id = g.group_id) AS member_count,
-		        EXISTS(SELECT 1 FROM group_members WHERE group_id = g.group_id AND members_id = ?) AS is_member
+		        EXISTS(SELECT 1 FROM group_members WHERE group_id = g.group_id AND members_id = ?) AS is_member,
+		        EXISTS(SELECT 1 FROM group_join_request WHERE group_id = g.group_id AND requested_by = ? AND status = 'pending') AS has_requested
 		 FROM groups g WHERE g.group_id = ?`,
-		viewerID, groupID,
-	).Scan(&g.GroupID, &g.CreatorID, &g.Title, &g.Description, &g.CreatedAt, &g.MemberCount, &g.IsMember)
+		viewerID, viewerID, groupID,
+	).Scan(&g.GroupID, &g.CreatorID, &g.Title, &g.Description, &g.CreatedAt, &g.MemberCount, &g.IsMember, &g.HasRequested)
 	if err != nil {
 		return nil, err
 	}
@@ -264,15 +268,26 @@ func RespondToJoinRequest(db *sql.DB, groupID, requestedBy string, accept bool) 
 	if accept {
 		status = "accepted"
 	}
-	if _, err := db.Exec(
-		`UPDATE group_join_request SET status = ? WHERE group_id = ? AND requested_by = ?`,
+
+	res, err := db.Exec(
+		`UPDATE group_join_request SET status = ?
+		 WHERE group_id = ? AND requested_by = ? AND status = 'pending'`,
 		status, groupID, requestedBy,
-	); err != nil {
+	)
+	if err != nil {
 		return err
 	}
+	changed, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if changed == 0 {
+		return errors.NotFound("that request is no longer pending")
+	}
+
 	if accept {
 		if _, err := db.Exec(
-			`INSERT INTO group_members (group_id, members_id) VALUES (?, ?)`,
+			`INSERT OR IGNORE INTO group_members (group_id, members_id) VALUES (?, ?)`,
 			groupID, requestedBy,
 		); err != nil {
 			return err
@@ -304,4 +319,49 @@ func ListMyGroups(db *sql.DB, userID string) ([]models.GroupSummary, error) {
 		groups = append(groups, g)
 	}
 	return groups, rows.Err()
+}
+
+// CancelJoinRequest withdraws the user's own pending request. It reports whether one existed.
+func CancelJoinRequest(db *sql.DB, groupID, userID string) (bool, error) {
+	res, err := db.Exec(
+		`DELETE FROM group_join_request
+		 WHERE group_id = ? AND requested_by = ? AND status = 'pending'`,
+		groupID, userID,
+	)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
+}
+
+// ListGroupPendingInvites returns the invites for a group that nobody has answered yet.
+func ListGroupPendingInvites(db *sql.DB, groupID string) ([]models.GroupInvite, error) {
+	rows, err := db.Query(
+		`SELECT id, group_id, invited_by, invited_to, status, created_at
+		 FROM group_invite
+		 WHERE group_id = ? AND status = 'pending'
+		 ORDER BY created_at DESC`,
+		groupID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	invites := []models.GroupInvite{}
+	for rows.Next() {
+		var inv models.GroupInvite
+		if err := rows.Scan(&inv.InviteID, &inv.GroupID, &inv.InvitedBy, &inv.InvitedTo, &inv.Status, &inv.CreatedAt); err != nil {
+			return nil, err
+		}
+		invites = append(invites, inv)
+	}
+	return invites, rows.Err()
+}
+
+// CancelInvite removes a pending invite.
+func CancelInvite(db *sql.DB, inviteID string) error {
+	_, err := db.Exec(`DELETE FROM group_invite WHERE id = ? AND status = 'pending'`, inviteID)
+	return err
 }

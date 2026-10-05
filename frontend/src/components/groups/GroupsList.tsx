@@ -12,7 +12,6 @@ export function GroupsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
 
   const reload = useCallback(() => {
     groupsApi
@@ -33,11 +32,20 @@ export function GroupsList() {
 
   useLive('groups', reload);
 
-  async function handleRequestToJoin(groupId: string) {
-    setBusyId(groupId);
+  async function toggleRequest(group: GroupSummary) {
+    setBusyId(group.groupId);
+    setError(null);
     try {
-      await groupsApi.requestToJoin(groupId);
-      setRequestedIds((current) => new Set(current).add(groupId));
+      if (group.hasRequested) {
+        await groupsApi.cancelJoinRequest(group.groupId);
+      } else {
+        await groupsApi.requestToJoin(group.groupId);
+      }
+      setGroups((current) =>
+        current.map((g) =>
+          g.groupId === group.groupId ? { ...g, hasRequested: !group.hasRequested } : g
+        )
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not reach the server.');
     } finally {
@@ -46,34 +54,41 @@ export function GroupsList() {
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (groups.length === 0) {
-    return <p className="text-sm text-muted-foreground">No groups to join right now.</p>;
+    return (
+      <>
+        {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
+        <p className="text-sm text-muted-foreground">No groups to join right now.</p>
+      </>
+    );
   }
 
   return (
-    <ul className="space-y-2">
-      {groups.map((group) => (
-        <li
-          key={group.groupId}
-          className="flex items-center justify-between rounded-lg border border-surface-border bg-surface px-3 py-2"
-        >
-          <Link href={`/groups/${group.groupId}`} className="min-w-0">
-            <p className="truncate text-sm font-medium">{group.title}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {group.memberCount} {group.memberCount === 1 ? 'member' : 'members'}
-            </p>
-          </Link>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={busyId === group.groupId || requestedIds.has(group.groupId)}
-            onClick={() => handleRequestToJoin(group.groupId)}
+    <div>
+      {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
+      <ul className="space-y-2">
+        {groups.map((group) => (
+          <li
+            key={group.groupId}
+            className="flex items-center justify-between rounded-lg border border-surface-border bg-surface px-3 py-2"
           >
-            {requestedIds.has(group.groupId) ? 'Requested' : 'Request to Join'}
-          </Button>
-        </li>
-      ))}
-    </ul>
+            <Link href={`/groups/${group.groupId}`} className="min-w-0">
+              <p className="truncate text-sm font-medium">{group.title}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {group.memberCount} {group.memberCount === 1 ? 'member' : 'members'}
+              </p>
+            </Link>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busyId === group.groupId}
+              onClick={() => toggleRequest(group)}
+            >
+              {group.hasRequested ? 'Cancel request' : 'Request to Join'}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

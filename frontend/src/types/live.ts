@@ -1,4 +1,4 @@
-export type LiveTopic = 'follow' | 'profile' | 'groups' | 'unread';
+export type LiveTopic = 'follow' | 'profile' | 'groups' | 'unread' | 'notifications';
 
 export interface LiveEvent {
   kind: 'live';

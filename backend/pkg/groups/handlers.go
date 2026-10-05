@@ -385,7 +385,7 @@ func RespondToJoinRequestHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		if err := queries.RespondToJoinRequest(db, groupID, requestedBy, req.Accept); err != nil {
-			errors.Handle(w, r, errors.ErrServerError)
+			errors.Handle(w, r, err)
 			return
 		}
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "responded"})
@@ -540,5 +540,118 @@ func ListMyGroupsHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"groups": groups})
+	}
+}
+
+func CancelJoinRequestHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+		groupID, err := parseID(r.PathValue("id"))
+		if err != nil {
+			errors.Handle(w, r, errors.BadRequest("invalid group id"))
+			return
+		}
+
+		cancelled, err := queries.CancelJoinRequest(db, groupID, userID)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+		if !cancelled {
+			errors.Handle(w, r, errors.NotFound("there is no pending request to cancel"))
+			return
+		}
+
+		if creatorID, err := queries.GetGroupCreatorID(db, groupID); err == nil {
+			_ = queries.DeleteNotification(db, creatorID, userID, "group_join_request", groupID)
+			hub.LiveTo([]string{creatorID}, "notifications", "")
+		}
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "cancelled"})
+	}
+}
+
+func ListGroupInvitesHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+		groupID, err := parseID(r.PathValue("id"))
+		if err != nil {
+			errors.Handle(w, r, errors.BadRequest("invalid group id"))
+			return
+		}
+
+		isMember, err := queries.IsGroupMember(db, groupID, userID)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+		if !isMember {
+			errors.Handle(w, r, errors.Forbidden("only members can see pending invites"))
+			return
+		}
+
+		invites, err := queries.ListGroupPendingInvites(db, groupID)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"invites": invites})
+	}
+}
+
+func CancelInviteHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+		inviteID, err := parseID(r.PathValue("id"))
+		if err != nil {
+			errors.Handle(w, r, errors.BadRequest("invalid invite id"))
+			return
+		}
+
+		invite, err := queries.GetInviteByID(db, inviteID)
+		if err == sql.ErrNoRows {
+			errors.Handle(w, r, errors.NotFound("invite not found"))
+			return
+		}
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+
+		creatorID, err := queries.GetGroupCreatorID(db, invite.GroupID)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+		if invite.InvitedBy != userID && creatorID != userID {
+			errors.Handle(w, r, errors.Forbidden("only the person who sent the invite or the group creator can cancel it"))
+			return
+		}
+		if invite.Status != "pending" {
+			errors.Handle(w, r, errors.Conflict("invite already responded to"))
+			return
+		}
+
+		if err := queries.CancelInvite(db, inviteID); err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+
+		_ = queries.DeleteNotification(db, invite.InvitedTo, invite.InvitedBy, "group_invite", inviteID)
+		hub.LiveTo([]string{invite.InvitedTo}, "notifications", "")
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "cancelled"})
 	}
 }

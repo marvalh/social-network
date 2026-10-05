@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from './Auth';
 import { useSocket } from './Socket';
+import { useLive } from '@/src/hooks/useLive';
 import { ApiError, notificationsApi } from '@/src/services/api';
 import type { Notification, NotificationPush } from '@/src/types/notification';
 
@@ -23,6 +24,7 @@ interface NotificationsContextValue {
   loading: boolean;
   error: string | null;
   markRead: (notifId: string) => Promise<void>;
+  markAllRead: () => Promise<void>;
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined);
@@ -73,6 +75,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     });
   }, [subscribe, refresh]);
 
+  // A notification was removed (a request or invite was cancelled) or read in another tab.
+  useLive('notifications', refresh);
+
   const markRead = useCallback(async (notifId: string) => {
     try {
       await notificationsApi.markRead(notifId);
@@ -85,8 +90,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const markAllRead = useCallback(async () => {
+    try {
+      await notificationsApi.markAllRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch {
+      // leave everything as it was so the user can try again
+    }
+  }, []);
+
   return (
-    <NotificationsContext.Provider value={{ notifications, unreadCount, loading, error, markRead }}>
+    <NotificationsContext.Provider
+      value={{ notifications, unreadCount, loading, error, markRead, markAllRead }}
+    >
       {children}
     </NotificationsContext.Provider>
   );

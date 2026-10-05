@@ -103,3 +103,21 @@ func Create(db *sql.DB, hub *ws.Hub, userID, actorID, notifType string, referenc
 	hub.SendToUser(userID, notification)
 	return nil
 }
+
+func MarkAllReadHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+
+		if err := queries.MarkAllRead(db, userID); err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+
+		hub.LiveTo([]string{userID}, "notifications", "")
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "read"})
+	}
+}
