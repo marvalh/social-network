@@ -69,15 +69,22 @@ func MarkReadHandler(db *sql.DB) http.HandlerFunc {
 }
 
 // Create saves a notification and pushes it live if the user is connected.
-func Create(db *sql.DB, hub *ws.Hub, userID string, notifType string, referenceID *string) error {
-	notifID, err := queries.InsertNotification(db, userID, notifType, referenceID)
+// actorID is who triggered it. Notifying yourself about your own action is skipped.
+func Create(db *sql.DB, hub *ws.Hub, userID, actorID, notifType string, referenceID *string) error {
+	if actorID != "" && actorID == userID {
+		return nil
+	}
+
+	notifID, err := queries.InsertNotification(db, userID, actorID, notifType, referenceID)
 	if err != nil {
 		return err
 	}
 
-	hub.SendToUser(userID, map[string]any{
-		"notifId": notifID,
-		"type":    notifType,
-	})
+	notification, err := queries.GetNotification(db, notifID)
+	if err != nil {
+		return err
+	}
+
+	hub.SendToUser(userID, notification)
 	return nil
 }

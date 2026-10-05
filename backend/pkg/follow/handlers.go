@@ -214,7 +214,7 @@ func SendFollowRequestHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 
 		if status == "pending" {
 			if followID, err := queries.GetFollowID(db, followerID, followeeID); err == nil {
-				_ = notifications.Create(db, hub, followeeID, "follow_request", &followID)
+				_ = notifications.Create(db, hub, followeeID, followerID, "follow_request", &followID)
 			}
 		}
 

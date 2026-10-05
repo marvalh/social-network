@@ -1,5 +1,5 @@
 import { CalendarPlus, UserPlus, Users, UsersRound, type LucideIcon } from 'lucide-react';
-import type { NotificationType } from '@/src/types/notification';
+import type { Notification } from '@/src/types/notification';
 
 interface NotificationDisplay {
   icon: LucideIcon;
@@ -7,15 +7,30 @@ interface NotificationDisplay {
   href?: string;
 }
 
-export function getNotificationDisplay(type: NotificationType): NotificationDisplay {
-  switch (type) {
+export function getNotificationDisplay(notification: Notification): NotificationDisplay {
+  const who = notification.actorName || 'Someone';
+  const ref = notification.referenceId;
+
+  switch (notification.type) {
     case 'follow_request':
-      return { icon: UserPlus, message: 'Someone wants to follow you', href: '/follow' };
+      return { icon: UserPlus, message: `${who} wants to follow you`, href: '/follow' };
     case 'group_invite':
-      return { icon: Users, message: 'You were invited to join a group' };
+      return {
+        icon: Users,
+        message: `${who} invited you to join a group`,
+        href: '/groups/invites',
+      };
     case 'group_join_request':
-      return { icon: UsersRound, message: 'Someone requested to join your group' };
+      return {
+        icon: UsersRound,
+        message: `${who} requested to join your group`,
+        href: ref ? `/groups/${ref}` : '/groups',
+      };
     case 'group_event':
-      return { icon: CalendarPlus, message: 'A new event was created in one of your groups' };
+      return {
+        icon: CalendarPlus,
+        message: `${who} created a new event in your group`,
+        href: ref ? `/groups/${ref}/events` : '/groups',
+      };
   }
 }

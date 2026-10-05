@@ -1,16 +1,20 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/src/context/Auth';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ApiError, groupsApi } from '@/src/services/api';
-import type { GroupDetail as GroupDetailType, GroupMember, GroupJoinRequest } from '@/src/types/group';
+import type {
+  GroupDetail as GroupDetailType,
+  GroupMember,
+  GroupJoinRequest,
+} from '@/src/types/group';
 import { BackLink } from '@/src/components/layout/BackLink';
 import { StatusError, statusOf, type ErrorStatus } from '@/src/components/layout/StatusError';
+import { InviteUser } from './InviteUser';
 import { UserChip } from './UserChip';
 
 interface GroupDetailProps {
@@ -27,10 +31,6 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadFailure, setLoadFailure] = useState<ErrorStatus | null>(null);
-
-  const [inviteId, setInviteId] = useState('');
-  const [inviting, setInviting] = useState(false);
-  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const [actionBusy, setActionBusy] = useState(false);
   const [requested, setRequested] = useState(false);
@@ -54,7 +54,7 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
           }
         }
       } catch (err) {
-        setLoadFailure(statusOf(err)); 
+        setLoadFailure(statusOf(err));
       } finally {
         setLoading(false);
       }
@@ -82,20 +82,6 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not reach the server.');
       setActionBusy(false);
-    }
-  }
-
-  async function handleInvite(event: FormEvent) {
-    event.preventDefault();
-    setInviting(true);
-    setInviteError(null);
-    try {
-      await groupsApi.sendInvite(groupId, { invitedTo: inviteId.trim() });
-      setInviteId('');
-    } catch (err) {
-      setInviteError(err instanceof ApiError ? err.message : 'Could not send the invite.');
-    } finally {
-      setInviting(false);
     }
   }
 
@@ -170,18 +156,9 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
 
           <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">
             <h3 className="text-sm font-semibold">Invite someone</h3>
-            <form onSubmit={handleInvite} className="mt-2 flex gap-2">
-              <Input
-                value={inviteId}
-                onChange={(e) => setInviteId(e.target.value)}
-                placeholder="User ID (the last part of their profile link)"
-                required
-              />
-              <Button type="submit" size="sm" disabled={inviting || !inviteId.trim()}>
-                Invite
-              </Button>
-            </form>
-            {inviteError && <p className="mt-2 text-sm text-destructive">{inviteError}</p>}
+            <div className="mt-2">
+              <InviteUser groupId={groupId} memberIds={members.map((m) => m.userId)} />
+            </div>
           </div>
 
           {isCreator && joinRequests.length > 0 && (

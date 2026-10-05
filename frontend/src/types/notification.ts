@@ -9,11 +9,12 @@ export interface Notification {
   userId: string;
   type: NotificationType;
   referenceId?: string;
+  actorId?: string;
+  actorName?: string;
+  actorAvatar?: string;
   isRead: boolean;
   createdAt: string;
 }
 
-export interface NotificationPush {
-  notifId: string;
-  type: NotificationType;
-}
+// The live push carries the full notification, same shape as the list.
+export type NotificationPush = Notification;

@@ -3,15 +3,39 @@ package queries
 import (
 	"database/sql"
 
-	"github.com/google/uuid"
 	"social-network-test/pkg/models"
+
+	"github.com/google/uuid"
 )
 
-func InsertNotification(db *sql.DB, userID, notifType string, referenceID *string) (string, error) {
+const notificationSelect = `SELECT n.notif_id, n.user_id, n.type, n.reference_id, n.actor_id,
+	TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')),
+	u.avatar, n.is_read, n.created_at
+	FROM notifications n
+	LEFT JOIN users u ON u.user_id = n.actor_id`
+
+type notifScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanNotif(row notifScanner) (models.Notification, error) {
+	var n models.Notification
+	err := row.Scan(&n.NotifID, &n.UserID, &n.Type, &n.ReferenceID, &n.ActorID,
+		&n.ActorName, &n.ActorAvatar, &n.IsRead, &n.CreatedAt)
+	return n, err
+}
+
+func InsertNotification(db *sql.DB, userID, actorID, notifType string, referenceID *string) (string, error) {
 	notifID := uuid.NewString()
+
+	var actor *string
+	if actorID != "" {
+		actor = &actorID
+	}
+
 	_, err := db.Exec(
-		`INSERT INTO notifications (notif_id, user_id, type, reference_id) VALUES (?, ?, ?, ?)`,
-		notifID, userID, notifType, referenceID,
+		`INSERT INTO notifications (notif_id, user_id, type, reference_id, actor_id) VALUES (?, ?, ?, ?, ?)`,
+		notifID, userID, notifType, referenceID, actor,
 	)
 	if err != nil {
 		return "", err
@@ -19,12 +43,13 @@ func InsertNotification(db *sql.DB, userID, notifType string, referenceID *strin
 	return notifID, nil
 }
 
+func GetNotification(db *sql.DB, notifID string) (models.Notification, error) {
+	return scanNotif(db.QueryRow(notificationSelect+` WHERE n.notif_id = ?`, notifID))
+}
+
 func ListNotifications(db *sql.DB, userID string) ([]models.Notification, error) {
 	rows, err := db.Query(
-		`SELECT notif_id, user_id, type, reference_id, is_read, created_at
-		 FROM notifications
-		 WHERE user_id = ?
-		 ORDER BY created_at DESC`,
+		notificationSelect+` WHERE n.user_id = ? ORDER BY n.created_at DESC`,
 		userID,
 	)
 	if err != nil {
@@ -34,8 +59,8 @@ func ListNotifications(db *sql.DB, userID string) ([]models.Notification, error)
 
 	notifications := []models.Notification{}
 	for rows.Next() {
-		var n models.Notification
-		if err := rows.Scan(&n.NotifID, &n.UserID, &n.Type, &n.ReferenceID, &n.IsRead, &n.CreatedAt); err != nil {
+		n, err := scanNotif(rows)
+		if err != nil {
 			return nil, err
 		}
 		notifications = append(notifications, n)

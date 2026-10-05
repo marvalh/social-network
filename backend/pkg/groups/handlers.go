@@ -98,6 +98,20 @@ func SendInviteHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			return
 		}
 
+		inviteeID, err := parseID(req.InvitedTo)
+		if err != nil {
+			errors.Handle(w, r, errors.NotFound("user not found"))
+			return
+		}
+		if _, err := queries.GetUserByID(db, inviteeID); err != nil {
+			if err == sql.ErrNoRows {
+				errors.Handle(w, r, errors.NotFound("user not found"))
+			} else {
+				errors.Handle(w, r, errors.ErrServerError)
+			}
+			return
+		}
+
 		targetAlreadyMember, err := queries.IsGroupMember(db, groupID, req.InvitedTo)
 		if err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
@@ -114,7 +128,7 @@ func SendInviteHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			return
 		}
 
-		_ = notifications.Create(db, hub, req.InvitedTo, "group_invite", &inviteID)
+		_ = notifications.Create(db, hub, req.InvitedTo, userID, "group_invite", &inviteID)
 
 		helpers.SendJSON(w, http.StatusCreated, map[string]any{"inviteId": inviteID})
 	}
@@ -289,7 +303,7 @@ func RequestToJoinHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 		}
 
 		if creatorID, err := queries.GetGroupCreatorID(db, groupID); err == nil {
-			_ = notifications.Create(db, hub, creatorID, "group_join_request", &groupID)
+			_ = notifications.Create(db, hub, creatorID, userID, "group_join_request", &groupID)
 		}
 
 		helpers.SendJSON(w, http.StatusCreated, map[string]any{"status": "requested"})
@@ -422,7 +436,7 @@ func CreateEventHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 				if m.UserID == userID {
 					continue
 				}
-				_ = notifications.Create(db, hub, m.UserID, "group_event", &eventID)
+				_ = notifications.Create(db, hub, m.UserID, userID, "group_event", &groupID)
 			}
 		}
 
