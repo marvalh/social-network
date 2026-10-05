@@ -212,15 +212,21 @@ func SendFollowRequestHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			return
 		}
 
+		followID, idErr := queries.GetFollowID(db, followerID, followeeID)
+
 		if status == "pending" {
-			if followID, err := queries.GetFollowID(db, followerID, followeeID); err == nil {
+			if idErr == nil {
 				_ = notifications.Create(db, hub, followeeID, followerID, "follow_request", &followID)
 			}
 		} else {
 			_ = notifications.Create(db, hub, followeeID, followerID, "new_follower", nil)
 		}
 
-		helpers.SendJSON(w, http.StatusCreated, map[string]any{"status": status})
+		response := map[string]any{"status": status}
+		if idErr == nil {
+			response["requestId"] = followID
+		}
+		helpers.SendJSON(w, http.StatusCreated, response)
 	}
 }
 
