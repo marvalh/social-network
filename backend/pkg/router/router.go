@@ -49,6 +49,9 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("GET /api/notifications", auth.RequireAuth(db, notifications.ListNotificationsHandler(db)))
 	mux.Handle("PATCH /api/notifications/{id}/read", auth.RequireAuth(db, notifications.MarkReadHandler(db)))
 	mux.Handle("GET /api/chat/search", auth.RequireAuth(db, chat.SearchUsersInChatHandler(db)))
+	mux.Handle("GET /api/chat/unread", auth.RequireAuth(db, chat.UnreadSummaryHandler(db)))
+	mux.Handle("POST /api/chat/read/{userId}", auth.RequireAuth(db, chat.MarkConversationReadHandler(db, hub)))
+	mux.Handle("POST /api/chat/read/group/{groupId}", auth.RequireAuth(db, chat.MarkGroupReadHandler(db, hub)))
 
 	// groups
 	mux.Handle("POST /api/groups", auth.RequireAuth(db, groups.CreateGroupHandler(db)))

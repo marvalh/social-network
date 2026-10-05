@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { UsersRound } from 'lucide-react';
+import { useUnread } from '@/src/context/Unread';
 import { useLive } from '@/src/hooks/useLive';
 import { groupsApi } from '@/src/services/api';
 import type { GroupSummary } from '@/src/types/group';
 
 export function GroupChatList() {
+  const { summary } = useUnread();
   const [groups, setGroups] = useState<GroupSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,24 +54,38 @@ export function GroupChatList() {
 
   return (
     <ul className="divide-y divide-border">
-      {groups.map((group) => (
-        <li key={group.groupId}>
-          <Link
-            href={`/groups/${group.groupId}/chat`}
-            className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted"
-          >
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-secondary text-brand-400">
-              <UsersRound className="size-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">{group.title}</p>
-              <p className="truncate text-sm text-muted-foreground">
-                {group.memberCount} {group.memberCount === 1 ? 'member' : 'members'}
-              </p>
-            </div>
-          </Link>
-        </li>
-      ))}
+      {groups.map((group) => {
+        const unread = summary.groups[group.groupId] ?? 0;
+        return (
+          <li key={group.groupId}>
+            <Link
+              href={`/groups/${group.groupId}/chat`}
+              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted"
+            >
+              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-secondary text-brand-400">
+                <UsersRound className="size-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`truncate text-sm text-foreground ${
+                    unread > 0 ? 'font-semibold' : 'font-medium'
+                  }`}
+                >
+                  {group.title}
+                </p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {group.memberCount} {group.memberCount === 1 ? 'member' : 'members'}
+                </p>
+              </div>
+              {unread > 0 && (
+                <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-sky-500 px-1.5 text-[11px] font-semibold text-white">
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 }

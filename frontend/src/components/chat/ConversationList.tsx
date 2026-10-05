@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useSocket } from '@/src/context/Socket';
+import { useUnread } from '@/src/context/Unread';
 import { chatApi } from '@/src/services/api';
 import { mediaUrl } from '@/src/utils/media';
 import { relativeTime } from '@/src/utils/formatDate';
@@ -10,6 +11,7 @@ import { isChatMessage, type Conversation } from '@/src/types/chat';
 
 export function ConversationList() {
   const { subscribe } = useSocket();
+  const { summary } = useUnread();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +59,7 @@ export function ConversationList() {
     <ul className="divide-y divide-border">
       {conversations.map((conversation) => {
         const avatarUrl = mediaUrl(conversation.avatar);
+        const unread = summary.direct[conversation.userId] ?? 0;
         return (
           <li key={conversation.userId}>
             <Link
@@ -75,14 +78,31 @@ export function ConversationList() {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
+                <p
+                  className={`truncate text-sm text-foreground ${
+                    unread > 0 ? 'font-semibold' : 'font-medium'
+                  }`}
+                >
                   {conversation.firstName} {conversation.lastName}
                 </p>
-                <p className="truncate text-sm text-muted-foreground">{conversation.lastMessage}</p>
+                <p
+                  className={`truncate text-sm ${
+                    unread > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  {conversation.lastMessage}
+                </p>
               </div>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {relativeTime(conversation.lastMessageAt)}
-              </span>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className="text-xs text-muted-foreground">
+                  {relativeTime(conversation.lastMessageAt)}
+                </span>
+                {unread > 0 && (
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-sky-500 px-1.5 text-[11px] font-semibold text-white">
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
+              </div>
             </Link>
           </li>
         );

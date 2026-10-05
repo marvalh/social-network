@@ -73,3 +73,11 @@ export function isGroupChatMessage(data: unknown): data is GroupMessage {
     !('receiverId' in data)
   );
 }
+
+export interface UnreadSummary {
+  direct: Record<string, number>;
+  groups: Record<string, number>;
+  directTotal: number;
+  groupsTotal: number;
+  total: number;
+}

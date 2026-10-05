@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
 import { ConversationList } from '@/src/components/chat/ConversationList';
 import { GroupChatList } from '@/src/components/chat/GroupChatList';
+import { useUnread } from '@/src/context/Unread';
 import { useRequireAuth } from '@/src/hooks/useRequireAuth';
 
 type Tab = 'direct' | 'groups';
@@ -15,11 +16,17 @@ const TABS: { key: Tab; label: string }[] = [
 
 export default function MessagesPage() {
   const { checking } = useRequireAuth();
+  const { summary } = useUnread();
   const [tab, setTab] = useState<Tab>('direct');
 
   if (checking) {
     return <FullPageSpinner />;
   }
+
+  const counts: Record<Tab, number> = {
+    direct: summary.directTotal,
+    groups: summary.groupsTotal,
+  };
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 space-y-5 px-4 py-6">
@@ -42,6 +49,11 @@ export default function MessagesPage() {
               }`}
             >
               {label}
+              {counts[key] > 0 && (
+                <span className="ml-1.5 rounded-full bg-sky-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {counts[key] > 9 ? '9+' : counts[key]}
+                </span>
+              )}
               {tab === key && (
                 <span className="gradient absolute inset-x-3 -bottom-px h-0.5 rounded-full" />
               )}

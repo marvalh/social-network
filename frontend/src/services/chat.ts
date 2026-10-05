@@ -1,5 +1,5 @@
 import { request } from './http';
-import type { Message, GroupMessage, Conversation } from '@/src/types/chat';
+import type { Message, GroupMessage, Conversation, UnreadSummary } from '@/src/types/chat';
 import type { User } from '@/src/types/user';
 
 export const chatApi = {
@@ -27,4 +27,9 @@ export const chatApi = {
     request<{ users: User[] }>(`/api/chat/search?q=${encodeURIComponent(query)}`).then(
       (r) => r.users
     ),
+
+  unread: () => request<UnreadSummary>('/api/chat/unread'),
+  markRead: (userId: string) => request<void>(`/api/chat/read/${userId}`, { method: 'POST' }),
+  markGroupRead: (groupId: string) =>
+    request<void>(`/api/chat/read/group/${groupId}`, { method: 'POST' }),
 };

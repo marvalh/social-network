@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/src/context/Auth';
 import { useSocket } from '@/src/context/Socket';
+import { useUnread } from '@/src/context/Unread';
 import { chatApi, profileApi } from '@/src/services/api';
 import { isChatMessage, isTypingEvent, type Message } from '@/src/types/chat';
 import { mediaUrl } from '@/src/utils/media';
@@ -23,6 +24,7 @@ interface ChatWindowProps {
 export function ChatWindow({ otherUserId }: ChatWindowProps) {
   const { user } = useAuth();
   const { subscribe, send } = useSocket();
+  const { markDirectRead } = useUnread();
   const [otherName, setOtherName] = useState<string | null>(null);
   const [otherAvatar, setOtherAvatar] = useState<string | undefined>();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -48,6 +50,7 @@ export function ChatWindow({ otherUserId }: ChatWindowProps) {
     const unsubscribe = subscribe((data) => {
       if (isChatMessage(data) && data.senderId === otherUserId) {
         setMessages((current) => [...current, data]);
+        if (document.visibilityState === 'visible') markDirectRead(otherUserId);
       }
       if (isTypingEvent(data) && data.senderId === otherUserId) {
         setOtherTyping(true);
@@ -62,7 +65,16 @@ export function ChatWindow({ otherUserId }: ChatWindowProps) {
       unsubscribe();
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
-  }, [subscribe, otherUserId]);
+  }, [subscribe, otherUserId, markDirectRead]);
+
+  useEffect(() => {
+    function markIfVisible() {
+      if (document.visibilityState === 'visible') markDirectRead(otherUserId);
+    }
+    markIfVisible();
+    document.addEventListener('visibilitychange', markIfVisible);
+    return () => document.removeEventListener('visibilitychange', markIfVisible);
+  }, [otherUserId, markDirectRead]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

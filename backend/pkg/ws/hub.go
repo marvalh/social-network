@@ -93,3 +93,8 @@ func (h *Hub) BroadcastLive(topic, id string) {
 		}
 	}
 }
+
+// LiveTo tells specific users that data under a topic changed.
+func (h *Hub) LiveTo(userIDs []string, topic, id string) {
+	h.SendToUsers(userIDs, liveEvent{Kind: "live", Topic: topic, ID: id})
+}

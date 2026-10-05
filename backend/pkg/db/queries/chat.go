@@ -142,3 +142,72 @@ func ListConversations(db *sql.DB, userID string) ([]models.ConversationSummary,
 	}
 	return conversations, rows.Err()
 }
+
+// MarkConversationRead marks every message sent by senderID to receiverID as read.
+func MarkConversationRead(db *sql.DB, receiverID, senderID string) error {
+	_, err := db.Exec(
+		`UPDATE chat SET read_at = CURRENT_TIMESTAMP
+		 WHERE receiver_id = ? AND sender_id = ? AND read_at IS NULL`,
+		receiverID, senderID,
+	)
+	return err
+}
+
+// MarkGroupRead records that userID has read everything currently in the group chat.
+func MarkGroupRead(db *sql.DB, groupID, userID string) error {
+	_, err := db.Exec(
+		`INSERT INTO group_chat_reads (group_id, user_id, last_read_rowid)
+		 VALUES (?, ?, COALESCE((SELECT MAX(rowid) FROM group_chat WHERE group_id = ?), 0))
+		 ON CONFLICT(group_id, user_id) DO UPDATE SET last_read_rowid = excluded.last_read_rowid`,
+		groupID, userID, groupID,
+	)
+	return err
+}
+
+// UnreadDirectCounts returns unread message counts per sender.
+func UnreadDirectCounts(db *sql.DB, userID string) (map[string]int, error) {
+	rows, err := db.Query(
+		`SELECT sender_id, COUNT(*) FROM chat
+		 WHERE receiver_id = ? AND read_at IS NULL
+		 GROUP BY sender_id`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanUnreadCounts(rows)
+}
+
+// UnreadGroupCounts returns unread message counts per group the user belongs to.
+func UnreadGroupCounts(db *sql.DB, userID string) (map[string]int, error) {
+	rows, err := db.Query(
+		`SELECT gc.group_id, COUNT(*)
+		 FROM group_chat gc
+		 JOIN group_members gm ON gm.group_id = gc.group_id AND gm.members_id = ?
+		 LEFT JOIN group_chat_reads r ON r.group_id = gc.group_id AND r.user_id = ?
+		 WHERE gc.sender_id != ?
+		   AND gc.rowid > COALESCE(r.last_read_rowid, 0)
+		   AND gc.created_at >= gm.joined_at
+		 GROUP BY gc.group_id`,
+		userID, userID, userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanUnreadCounts(rows)
+}
+
+func scanUnreadCounts(rows *sql.Rows) (map[string]int, error) {
+	counts := map[string]int{}
+	for rows.Next() {
+		var id string
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, err
+		}
+		counts[id] = n
+	}
+	return counts, rows.Err()
+}

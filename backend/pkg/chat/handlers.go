@@ -242,3 +242,97 @@ func SearchUsersInChatHandler(db *sql.DB) http.HandlerFunc {
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"users": results})
 	}
 }
+
+func UnreadSummaryHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+
+		direct, err := queries.UnreadDirectCounts(db, userID)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+		groups, err := queries.UnreadGroupCounts(db, userID)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+
+		directTotal := 0
+		for _, n := range direct {
+			directTotal += n
+		}
+		groupsTotal := 0
+		for _, n := range groups {
+			groupsTotal += n
+		}
+
+		helpers.SendJSON(w, http.StatusOK, map[string]any{
+			"direct":      direct,
+			"groups":      groups,
+			"directTotal": directTotal,
+			"groupsTotal": groupsTotal,
+			"total":       directTotal + groupsTotal,
+		})
+	}
+}
+
+func MarkConversationReadHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		senderID, err := parseID(r.PathValue("userId"))
+		if err != nil {
+			errors.Handle(w, r, errors.BadRequest("invalid user id"))
+			return
+		}
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+
+		if err := queries.MarkConversationRead(db, userID, senderID); err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+
+		hub.LiveTo([]string{userID}, "unread", "")
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "read"})
+	}
+}
+
+func MarkGroupReadHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		groupID, err := parseID(r.PathValue("groupId"))
+		if err != nil {
+			errors.Handle(w, r, errors.BadRequest("invalid group id"))
+			return
+		}
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			errors.Handle(w, r, errors.ErrUnauthorized)
+			return
+		}
+
+		isMember, err := queries.IsGroupMember(db, groupID, userID)
+		if err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+		if !isMember {
+			errors.Handle(w, r, errors.Forbidden("not a member of this group"))
+			return
+		}
+
+		if err := queries.MarkGroupRead(db, groupID, userID); err != nil {
+			errors.Handle(w, r, errors.ErrServerError)
+			return
+		}
+
+		hub.LiveTo([]string{userID}, "unread", "")
+		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "read"})
+	}
+}

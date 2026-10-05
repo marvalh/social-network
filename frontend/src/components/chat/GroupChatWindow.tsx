@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/src/context/Auth';
 import { useSocket } from '@/src/context/Socket';
+import { useUnread } from '@/src/context/Unread';
 import { chatApi, groupsApi, profileApi } from '@/src/services/api';
 import { isGroupChatMessage, isGroupTypingEvent, type GroupMessage } from '@/src/types/chat';
 import type { GroupDetail as GroupDetailType } from '@/src/types/group';
@@ -23,6 +24,7 @@ interface GroupChatWindowProps {
 export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
   const { user } = useAuth();
   const { subscribe, send } = useSocket();
+  const { markGroupRead } = useUnread();
   const [group, setGroup] = useState<GroupDetailType | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
@@ -75,6 +77,7 @@ export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
       if (isGroupChatMessage(data) && data.groupId === groupId) {
         setMessages((current) => [...current, data]);
         stopTyping(data.senderId);
+        if (document.visibilityState === 'visible') markGroupRead(groupId);
       }
       if (isGroupTypingEvent(data) && data.groupId === groupId) {
         const id = data.senderId;
@@ -94,7 +97,16 @@ export function GroupChatWindow({ groupId }: GroupChatWindowProps) {
       timers.forEach((timer) => clearTimeout(timer));
       timers.clear();
     };
-  }, [subscribe, groupId, ensureName]);
+  }, [subscribe, groupId, ensureName, markGroupRead]);
+
+  useEffect(() => {
+    function markIfVisible() {
+      if (document.visibilityState === 'visible') markGroupRead(groupId);
+    }
+    markIfVisible();
+    document.addEventListener('visibilitychange', markIfVisible);
+    return () => document.removeEventListener('visibilitychange', markIfVisible);
+  }, [groupId, markGroupRead]);
 
   useEffect(() => {
     for (const message of messages) {
