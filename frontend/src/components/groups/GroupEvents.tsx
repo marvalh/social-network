@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DateTimePicker } from '@/src/components/form/DateTimePicker';
 import { useLive } from '@/src/hooks/useLive';
 import { ApiError, groupsApi } from '@/src/services/api';
 import type { GroupEvent } from '@/src/types/group';
@@ -12,6 +13,11 @@ import { StatusError, statusOf, type ErrorStatus } from '@/src/components/layout
 
 interface GroupEventsProps {
   groupId: string;
+}
+
+interface EventFieldErrors {
+  title?: string;
+  time?: string;
 }
 
 export function GroupEvents({ groupId }: GroupEventsProps) {
@@ -25,6 +31,7 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
   const [eventTime, setEventTime] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<EventFieldErrors>({});
   const [showForm, setShowForm] = useState(false);
 
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -56,8 +63,22 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
-    setCreating(true);
+    if (creating) return;
+
+    const errors: EventFieldErrors = {};
+    if (!title.trim()) {
+      errors.title = 'Give your event a title.';
+    }
+    if (!eventTime) {
+      errors.time = 'Pick a date and time.';
+    } else if (new Date(eventTime).getTime() <= Date.now()) {
+      errors.time = 'Pick a time in the future.';
+    }
+    setFieldErrors(errors);
     setCreateError(null);
+    if (errors.title || errors.time) return;
+
+    setCreating(true);
     try {
       await groupsApi.createEvent(groupId, {
         title: title.trim(),
@@ -67,6 +88,7 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
       setTitle('');
       setDescription('');
       setEventTime('');
+      setShowForm(false);
       load(true);
     } catch (err) {
       setCreateError(err instanceof ApiError ? err.message : 'Could not create the event.');
@@ -119,19 +141,29 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
       {showForm && (
         <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">
           <h2 className="text-sm font-semibold">New event</h2>
-          <form onSubmit={handleCreate} className="mt-3 space-y-3">
-            {createError && <p className="text-sm text-destructive">{createError}</p>}
+          <form onSubmit={handleCreate} noValidate className="mt-3 space-y-3">
+            {createError && (
+              <p role="alert" className="text-sm text-destructive">
+                {createError}
+              </p>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="eventTitle">Title</Label>
               <Input
                 id="eventTitle"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
+                aria-invalid={Boolean(fieldErrors.title)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setFieldErrors((current) => ({ ...current, title: undefined }));
+                }}
               />
+              {fieldErrors.title && <p className="text-xs text-destructive">{fieldErrors.title}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="eventDescription">Description</Label>
+              <Label htmlFor="eventDescription">
+                Description <span className="text-muted-foreground">(optional)</span>
+              </Label>
               <textarea
                 id="eventDescription"
                 value={description}
@@ -142,15 +174,18 @@ export function GroupEvents({ groupId }: GroupEventsProps) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="eventTime">Date & time</Label>
-              <Input
+              <DateTimePicker
                 id="eventTime"
-                type="datetime-local"
                 value={eventTime}
-                onChange={(e) => setEventTime(e.target.value)}
-                required
+                invalid={Boolean(fieldErrors.time)}
+                onChange={(next) => {
+                  setEventTime(next);
+                  setFieldErrors((current) => ({ ...current, time: undefined }));
+                }}
               />
+              {fieldErrors.time && <p className="text-xs text-destructive">{fieldErrors.time}</p>}
             </div>
-            <Button type="submit" size="sm" disabled={creating || !title.trim() || !eventTime}>
+            <Button type="submit" size="sm" disabled={creating}>
               {creating ? 'Creating…' : 'Create Event'}
             </Button>
           </form>

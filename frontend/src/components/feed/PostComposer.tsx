@@ -72,10 +72,10 @@ export function PostComposer({ onCreated }: { onCreated: (post: Post) => void })
     try {
       const { img } = await postsApi.uploadImage(file);
       setImgKey(img);
-    } catch {
-      setError('That image could not be uploaded. Try another one.');
-      setImgPreview(null);
-      setImgKey(null);
+    } catch (err) {
+      setError(
+      err instanceof ApiError ? err.message : 'That image could not be uploaded. Try another one.'
+    );
     } finally {
       setUploading(false);
     }
@@ -88,9 +88,33 @@ export function PostComposer({ onCreated }: { onCreated: (post: Post) => void })
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!content.trim() || uploading) return;
+    if (submitting) return;
+
+    if (uploading) {
+      setError('Your image is still uploading. Give it a moment.');
+      return;
+    }
+    if (!content.trim()) {
+      setError('Write something to share first.');
+      return;
+    }
+    if (privacy === 'private') {
+      if (loadingFollowers) {
+        setError('Your followers are still loading. Try again in a moment.');
+        return;
+      }
+      if (followerError) {
+        setError(followerError);
+        return;
+      }
+      if (visibleToIds.length === 0) {
+        setError('Pick at least one follower to share this with, or choose a different audience.');
+        return;
+      }
+    }
     setSubmitting(true);
     setError(null);
+
     try {
       const post = await postsApi.create({
         content: content.trim(),
@@ -128,7 +152,10 @@ export function PostComposer({ onCreated }: { onCreated: (post: Post) => void })
         <div className="min-w-0 flex-1">
           <textarea
             value={content}
-            onChange={(event) => setContent(event.target.value)}
+            onChange={(event) => {
+              setContent(event.target.value);
+              if (error) setError(null);
+            }}
             placeholder={`What's on your mind, ${user?.firstName ?? 'there'}?`}
             maxLength={5000}
             rows={content ? 3 : 1}
@@ -237,17 +264,7 @@ export function PostComposer({ onCreated }: { onCreated: (post: Post) => void })
                   </option>
                 ))}
               </select>
-              <Button
-                type="submit"
-                disabled={
-                  submitting ||
-                  uploading ||
-                  !content.trim() ||
-                  (privacy === 'private' &&
-                    (loadingFollowers || Boolean(followerError) || visibleToIds.length === 0))
-                }
-                className="gradient border-0 text-white"
-              >
+              <Button type="submit" disabled={submitting} className="gradient border-0 text-white">
                 {submitting ? 'Publishing...' : 'Post'}
               </Button>
             </div>

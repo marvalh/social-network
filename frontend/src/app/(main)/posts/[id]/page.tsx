@@ -81,10 +81,8 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
     try {
       const { img } = await postsApi.uploadImage(file);
       setImgKey(img);
-    } catch {
-      setFormError('That image could not be uploaded.');
-      setImgPreview(null);
-      setImgKey(null);
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'That image could not be uploaded.');
     } finally {
       setUploading(false);
     }
@@ -92,7 +90,15 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
 
   async function addComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!post || !content.trim() || uploading) return;
+    if (!post || submitting) return;
+    if (uploading) {
+      setFormError('Your image is still uploading. Give it a moment.');
+      return;
+    }
+    if (!content.trim()) {
+      setFormError('Write a comment first.');
+      return;
+    }
     setSubmitting(true);
     setFormError(null);
     try {
@@ -191,7 +197,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
                     <Button
                       type="submit"
                       size="icon"
-                      disabled={!content.trim() || submitting || uploading}
+                      disabled={submitting}
                       aria-label="Send comment"
                     >
                       <Send />

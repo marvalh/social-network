@@ -11,12 +11,20 @@ export function CreateGroupForm() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [titleError, setTitleError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
     setError(null);
+
+    if (!title.trim()) {
+      setTitleError('Give your group a name.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const { groupId } = await groupsApi.create({
@@ -25,13 +33,13 @@ export function CreateGroupForm() {
       });
       router.push(`/groups/${groupId}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not reach the server.');
+      setError(err instanceof ApiError ? err.message : 'Could not create the group.');
       setSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -40,11 +48,22 @@ export function CreateGroupForm() {
 
       <div className="space-y-1.5">
         <Label htmlFor="title">Group name</Label>
-        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <Input
+          id="title"
+          value={title}
+          aria-invalid={Boolean(titleError)}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            setTitleError(null);
+          }}
+        />
+        {titleError && <p className="text-xs text-destructive">{titleError}</p>}
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">
+          Description <span className="text-muted-foreground">(optional)</span>
+        </Label>
         <textarea
           id="description"
           value={description}
@@ -54,7 +73,7 @@ export function CreateGroupForm() {
         />
       </div>
 
-      <Button type="submit" disabled={submitting || !title.trim()}>
+      <Button type="submit" disabled={submitting}>
         {submitting ? 'Creating…' : 'Create Group'}
       </Button>
     </form>
