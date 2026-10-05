@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { Avatar } from '@/src/components/profile/Avatar';
 import { FollowButton } from '@/src/components/follow/FollowButton';
 import { ApiError, profileApi } from '@/src/services/api';
+import type { FollowStatus } from '@/src/types/follow';
 import type { User } from '@/src/types/user';
 
 export function PeopleList() {
   const [users, setUsers] = useState<User[]>([]);
+  const [statuses, setStatuses] = useState<Record<string, FollowStatus>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,12 +18,14 @@ export function PeopleList() {
     profileApi
       .suggestedUsers()
       .then(setUsers)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load suggestions.'))
+      .catch((err) =>
+        setError(err instanceof ApiError ? err.message : 'Could not load suggestions.')
+      )
       .finally(() => setLoading(false));
   }, []);
 
-  function handleFollowed(userId: string) {
-    setUsers((current) => current.filter((u) => u.userId !== userId));
+  function handleChange(userId: string, status: FollowStatus) {
+    setStatuses((current) => ({ ...current, [userId]: status }));
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -47,8 +51,8 @@ export function PeopleList() {
           </Link>
           <FollowButton
             userId={user.userId}
-            status="none"
-            onChange={(status) => status !== 'none' && handleFollowed(user.userId)}
+            status={statuses[user.userId] ?? 'none'}
+            onChange={(status) => handleChange(user.userId, status)}
           />
         </li>
       ))}
