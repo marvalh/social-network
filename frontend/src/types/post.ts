@@ -19,6 +19,25 @@ export function isPostRealtimeEvent(data: unknown): data is PostRealtimeEvent {
   );
 }
 
+export interface FollowRealtimeEvent {
+  kind: 'follow';
+  action: string;
+  followeeId: string;
+}
+
+export function isFollowRealtimeEvent(data: unknown): data is FollowRealtimeEvent {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'kind' in data &&
+    data.kind === 'follow' &&
+    'action' in data &&
+    typeof data.action === 'string' &&
+    'followeeId' in data &&
+    typeof data.followeeId === 'string'
+  );
+}
+
 export interface Post {
   postId: string;
   userId: string;

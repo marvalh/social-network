@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/src/context/Auth';
 import { useSocket } from '@/src/context/Socket';
 import { ApiError, postsApi } from '@/src/services/api';
-import { isPostRealtimeEvent, type Post } from '@/src/types/post';
+import { isFollowRealtimeEvent, isPostRealtimeEvent, type Post } from '@/src/types/post';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
 import { PostCard } from './PostCard';
 import { PostComposer } from './PostComposer';
@@ -42,6 +42,10 @@ export function FeedPage() {
   useEffect(
     () =>
       subscribe((data) => {
+        if (isFollowRealtimeEvent(data) && data.action === 'unfollowed') {
+          setPosts((current) => current.filter((post) => post.userId !== data.followeeId));
+          return;
+        }
         if (!isPostRealtimeEvent(data)) return;
         if (data.action === 'deleted') {
           setPosts((current) => current.filter((post) => post.postId !== data.postId));

@@ -32,11 +32,11 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB, hub *ws.Hub) {
 	mux.Handle("GET /api/users/{id}/followers", auth.RequireAuth(db, follow.GetFollowersHandler(db)))
 	mux.Handle("GET /api/users/{id}/following", auth.RequireAuth(db, follow.GetFollowingHandler(db)))
 	mux.Handle("POST /api/users/{id}/follow", auth.RequireAuth(db, follow.SendFollowRequestHandler(db, hub)))
-	mux.Handle("DELETE /api/users/{id}/follow", auth.RequireAuth(db, follow.UnfollowHandler(db)))
+	mux.Handle("DELETE /api/users/{id}/follow", auth.RequireAuth(db, follow.UnfollowHandler(db, hub)))
 	mux.Handle("POST /api/follow-requests/{requestId}/accept", auth.RequireAuth(db, follow.AcceptRequestHandler(db, hub)))
 	mux.Handle("POST /api/follow-requests/{requestId}/decline", auth.RequireAuth(db, follow.DeclineRequestHandler(db)))
 	mux.Handle("DELETE /api/follow-requests/{requestId}", auth.RequireAuth(db, follow.CancelRequestHandler(db)))
-	mux.Handle("DELETE /api/followers/{id}", auth.RequireAuth(db, follow.RemoveFollowerHandler(db)))
+	mux.Handle("DELETE /api/followers/{id}", auth.RequireAuth(db, follow.RemoveFollowerHandler(db, hub)))
 	mux.Handle("GET /api/follow-requests/pending", auth.RequireAuth(db, follow.GetPendingRequestsHandler(db)))
 
 	// websocket connection endpoint (chat + notifications)

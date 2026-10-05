@@ -339,7 +339,7 @@ func CancelRequestHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func UnfollowHandler(db *sql.DB) http.HandlerFunc {
+func UnfollowHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		targetID, err := parseID(r.PathValue("id"))
 		if err != nil {
@@ -357,11 +357,19 @@ func UnfollowHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		if hub != nil {
+			hub.SendToUser(userID, map[string]string{
+				"kind":       "follow",
+				"action":     "unfollowed",
+				"followeeId": targetID,
+			})
+		}
+
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"status": "unfollowed"})
 	}
 }
 
-func RemoveFollowerHandler(db *sql.DB) http.HandlerFunc {
+func RemoveFollowerHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		followerID, err := parseID(r.PathValue("id"))
 		if err != nil {
@@ -378,6 +386,14 @@ func RemoveFollowerHandler(db *sql.DB) http.HandlerFunc {
 		if err := queries.RemoveAcceptedFollow(db, followerID, followeeID); err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
+		}
+
+		if hub != nil {
+			hub.SendToUser(followerID, map[string]string{
+				"kind":       "follow",
+				"action":     "unfollowed",
+				"followeeId": followeeID,
+			})
 		}
 
 		helpers.SendJSON(w, http.StatusOK, map[string]any{
