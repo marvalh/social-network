@@ -12,8 +12,9 @@ import type { User } from '../types/user';
 
 export const postsApi = {
   feed: (offset = 0) => request<Post[]>(`/api/feed?limit=20&offset=${offset}`),
-  followers: (userId: string) =>
-    request<{ followers: User[] }>(`/api/users/${userId}/followers`),
+  groupPosts: (groupId: string, offset = 0) =>
+    request<Post[]>(`/api/groups/${groupId}/posts?limit=20&offset=${offset}`),
+  followers: (userId: string) => request<{ followers: User[] }>(`/api/users/${userId}/followers`),
   get: (postId: string) => request<Post>(`/api/posts/${postId}`),
   create: (payload: CreatePostPayload) =>
     request<Post>('/api/posts', { method: 'POST', body: payload }),

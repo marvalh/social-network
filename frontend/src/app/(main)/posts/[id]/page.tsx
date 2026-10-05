@@ -136,7 +136,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   }
 
   function handlePostDeleted() {
-    router.replace('/');
+    router.replace(post?.groupId ? `/groups/${post.groupId}` : '/');
   }
 
   if (!post && !loadFailure) return <FullPageSpinner />;
@@ -145,10 +145,10 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
     <main className="min-h-screen bg-canvas">
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
         <Link
-          href="/"
+          href={post?.groupId ? `/groups/${post.groupId}` : '/'}
           className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="size-4" /> Back to feed
+          <ArrowLeft className="size-4" /> {post?.groupId ? 'Back to group' : 'Back to feed'}
         </Link>
         {loadFailure ? (
           <StatusError status={loadFailure} />

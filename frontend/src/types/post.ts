@@ -50,6 +50,7 @@ export interface Comment {
 export interface CreatePostPayload {
   content: string;
   privacy: PostPrivacy;
+  groupId?: string;
   img?: string;
   visibleToIds?: string[];
 }

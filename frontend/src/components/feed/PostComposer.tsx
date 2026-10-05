@@ -17,11 +17,19 @@ const PRIVACY_LABEL: Record<PostPrivacy, string> = {
   private: 'Selected followers',
 };
 
-export function PostComposer({ onCreated }: { onCreated: (post: Post) => void }) {
+interface PostComposerProps {
+  onCreated: (post: Post) => void;
+  /** When set, the post is shared inside that group and only its members can see it. */
+  groupId?: string;
+}
+
+export function PostComposer({ onCreated, groupId }: PostComposerProps) {
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [privacy, setPrivacy] = useState<PostPrivacy>('public');
-  const [followers, setFollowers] = useState<{ userId: string; firstName: string; lastName: string }[]>([]);
+  const [followers, setFollowers] = useState<
+    { userId: string; firstName: string; lastName: string }[]
+  >([]);
   const [visibleToIds, setVisibleToIds] = useState<string[]>([]);
   const [loadingFollowers, setLoadingFollowers] = useState(false);
   const [followerError, setFollowerError] = useState<string | null>(null);
@@ -74,8 +82,8 @@ export function PostComposer({ onCreated }: { onCreated: (post: Post) => void })
       setImgKey(img);
     } catch (err) {
       setError(
-      err instanceof ApiError ? err.message : 'That image could not be uploaded. Try another one.'
-    );
+        err instanceof ApiError ? err.message : 'That image could not be uploaded. Try another one.'
+      );
     } finally {
       setUploading(false);
     }
@@ -119,6 +127,7 @@ export function PostComposer({ onCreated }: { onCreated: (post: Post) => void })
       const post = await postsApi.create({
         content: content.trim(),
         privacy,
+        groupId,
         img: imgKey ?? undefined,
         visibleToIds: privacy === 'private' ? visibleToIds : undefined,
       });
@@ -156,7 +165,11 @@ export function PostComposer({ onCreated }: { onCreated: (post: Post) => void })
               setContent(event.target.value);
               if (error) setError(null);
             }}
-            placeholder={`What's on your mind, ${user?.firstName ?? 'there'}?`}
+            placeholder={
+              groupId
+                ? 'Share something with the group...'
+                : `What's on your mind, ${user?.firstName ?? 'there'}?`
+            }
             maxLength={5000}
             rows={content ? 3 : 1}
             className="min-h-11 w-full resize-none rounded-lg border border-border bg-surface px-4 py-2.5 text-base outline-none transition-[min-height] placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
@@ -245,25 +258,27 @@ export function PostComposer({ onCreated }: { onCreated: (post: Post) => void })
             </div>
 
             <div className="flex items-center gap-2 sm:justify-end">
-              <select
-                value={privacy}
-                onChange={(event) => {
-                  const nextPrivacy = event.target.value as PostPrivacy;
-                  if (nextPrivacy === 'private') {
-                    setLoadingFollowers(true);
-                    setFollowerError(null);
-                  }
-                  setPrivacy(nextPrivacy);
-                }}
-                aria-label="Post privacy"
-                className="h-8 rounded-lg border border-border bg-surface px-2 text-xs text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                {(Object.keys(PRIVACY_LABEL) as PostPrivacy[]).map((value) => (
-                  <option key={value} value={value}>
-                    {PRIVACY_LABEL[value]}
-                  </option>
-                ))}
-              </select>
+              {!groupId && (
+                <select
+                  value={privacy}
+                  onChange={(event) => {
+                    const nextPrivacy = event.target.value as PostPrivacy;
+                    if (nextPrivacy === 'private') {
+                      setLoadingFollowers(true);
+                      setFollowerError(null);
+                    }
+                    setPrivacy(nextPrivacy);
+                  }}
+                  aria-label="Post privacy"
+                  className="h-8 rounded-lg border border-border bg-surface px-2 text-xs text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {(Object.keys(PRIVACY_LABEL) as PostPrivacy[]).map((value) => (
+                    <option key={value} value={value}>
+                      {PRIVACY_LABEL[value]}
+                    </option>
+                  ))}
+                </select>
+              )}
               <Button type="submit" disabled={submitting} className="gradient border-0 text-white">
                 {submitting ? 'Publishing...' : 'Post'}
               </Button>

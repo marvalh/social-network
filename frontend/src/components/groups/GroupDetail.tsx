@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { GroupPosts } from './GroupPosts';
 import { CalendarDays, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/src/context/Auth';
 import { Button } from '@/components/ui/button';
@@ -162,6 +163,8 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
             </span>
             <span className="text-muted-foreground">Open →</span>
           </Link>
+
+          <GroupPosts key={groupId} groupId={groupId} />
 
           <div className="rounded-2xl bg-card p-4 ring-1 ring-white/10">
             <h3 className="text-sm font-semibold">Invite someone</h3>

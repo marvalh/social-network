@@ -140,7 +140,9 @@ export function PostCard({ post, onUpdated, onDeleted, detailed = false }: PostC
             </Link>
             <span className="text-xs text-muted-foreground">· {relativeTime(post.createdAt)}</span>
           </div>
-          <p className="text-xs capitalize text-muted-foreground">{PRIVACY_LABEL[post.privacy]}</p>
+          <p className="text-xs capitalize text-muted-foreground">
+            {post.groupId ? 'Group post' : PRIVACY_LABEL[post.privacy]}
+          </p>
         </div>
 
         {isOwner && (
