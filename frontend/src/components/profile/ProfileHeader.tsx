@@ -167,6 +167,8 @@ export function ProfileHeader({
                 </Link>
                 <FollowButton
                   userId={user.userId}
+                  name={`${user.firstName} ${user.lastName}`}
+                  isPublic={user.isPublic}
                   status={profile.followStatus}
                   requestId={profile.followRequestId}
                   onChange={onFollowChange}

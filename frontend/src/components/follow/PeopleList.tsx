@@ -51,6 +51,8 @@ export function PeopleList() {
           </Link>
           <FollowButton
             userId={user.userId}
+            name={`${user.firstName} ${user.lastName}`}
+            isPublic={user.isPublic}
             status={statuses[user.userId] ?? 'none'}
             onChange={(status) => handleChange(user.userId, status)}
           />
