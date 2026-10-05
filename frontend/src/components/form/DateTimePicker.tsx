@@ -27,7 +27,7 @@ const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
 const SELECT_CLASS =
-  'h-8 rounded-lg border border-border bg-surface px-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring';
+  'h-8 rounded-lg border border-border bg-surface px-2 text-sm text-foreground outline-none [color-scheme:dark] focus-visible:ring-1 focus-visible:ring-ring';
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -249,7 +249,7 @@ export function DateTimePicker({ id, value, onChange, invalid }: DateTimePickerP
             className={SELECT_CLASS}
           >
             {HOURS.map((h) => (
-              <option key={h} value={h}>
+              <option key={h} value={h} className="bg-card text-foreground">
                 {h}
               </option>
             ))}
@@ -262,7 +262,7 @@ export function DateTimePicker({ id, value, onChange, invalid }: DateTimePickerP
             className={SELECT_CLASS}
           >
             {MINUTES.map((m) => (
-              <option key={m} value={m}>
+              <option key={m} value={m} className="bg-card text-foreground">
                 {pad(m)}
               </option>
             ))}
