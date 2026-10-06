@@ -20,7 +20,28 @@ A Facebook-style social network built with a **Go** REST API + **SQLite** backen
 | Frontend | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui |
 | Infra    | Docker (separate backend/frontend images), SQL migrations |
 
-## Project Structure
+## Getting Started
+
+### Backend
+```bash
+cd backend
+go mod download
+ # running seed/main.go is optional, but recommended since it shows the full project functionality
+go run ./cmd/seed # check out the file to log-in with appropriate credentials
+go run .        # runs migrations automatically, serves on :8080
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev     # serves on :3000
+```
+
+### Docker
+```bash
+docker compose up --build
+```
 
 ## Project Structure
  
@@ -153,29 +174,6 @@ social-network/
 | `src/services` | One file per API area — thin wrappers around `fetch` that call the backend |
 | `src/types` | Shared TypeScript types matching the backend's JSON responses |
 | `src/utils` | Small shared helper functions (validation, formatting, etc.) |
-
-## Getting Started
-
-### Backend
-```bash
-cd backend
-go mod download
- # running seed/main.go is optional, but recommended since it shows the full project functionality
-go run ./cmd/seed # check out the file to log-in with appropriate credentials
-go run .        # runs migrations automatically, serves on :8080
-```
-
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev     # serves on :3000
-```
-
-### Docker
-```bash
-docker compose up --build
-```
 
 ## API Overview
 
