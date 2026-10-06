@@ -47,4 +47,5 @@ var (
 	ErrUnauthorized       = Unauthorized("unauthorized")
 	ErrInvalidCredentials = Unauthorized("Invalid credentials")
 	ErrServerError        = Internal("server error")
+	ErrConflict 		  = Conflict("Account already exists")
 )

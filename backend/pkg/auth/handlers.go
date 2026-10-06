@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"social-network-test/pkg/db/queries"
-	"social-network-test/pkg/models"
 	"social-network-test/pkg/errors"
+	"social-network-test/pkg/models"
 	"time"
 )
 
@@ -25,7 +25,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 
 		exists, _ := queries.EmailExists(db, req.Email)
 		if exists {
-			errors.Handle(w, r, errors.Conflict("Email already registered"))
+			errors.Handle(w, r, errors.ErrConflict)
 			return
 		}
 
