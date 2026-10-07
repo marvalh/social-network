@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { Send, Smile } from 'lucide-react';
+import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/src/services/api';
-import { MESSAGE_MAX } from '@/src/utils/validation';
-import { EmojiPicker } from './EmojiPicker';
+
+const MAX_LENGTH = 150;
 
 interface MessageComposerProps {
   onSend: (content: string) => Promise<void>;
@@ -16,30 +16,17 @@ export function MessageComposer({ onSend, onTyping }: MessageComposerProps) {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const pickerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!pickerOpen) return;
-    function handleClickOutside(event: MouseEvent) {
-      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
-        setPickerOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [pickerOpen]);
+  const remaining = MAX_LENGTH - content.length;
 
   async function submit() {
-    const trimmed = content.trim();
+    const trimmed = content.trim().slice(0, MAX_LENGTH);
     if (!trimmed || sending) return;
     setSending(true);
     setError(null);
     try {
       await onSend(trimmed);
       setContent('');
-      setPickerOpen(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not send that message.');
     } finally {
@@ -59,61 +46,33 @@ export function MessageComposer({ onSend, onTyping }: MessageComposerProps) {
     }
   }
 
-  function insertEmoji(emoji: string) {
-    const el = textareaRef.current;
-    const start = el?.selectionStart ?? content.length;
-    const end = el?.selectionEnd ?? content.length;
-    setContent((content.slice(0, start) + emoji + content.slice(end)).slice(0, MESSAGE_MAX));
-    onTyping?.();
-    requestAnimationFrame(() => {
-      el?.focus();
-      const caret = start + emoji.length;
-      el?.setSelectionRange(caret, caret);
-    });
-  }
-
   return (
     <form onSubmit={handleSubmit} className="border-t border-border p-3">
       {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
-      {content.length >= MESSAGE_MAX - 200 && (
-        <p
-          className={`mb-2 text-right text-xs ${
-            content.length >= MESSAGE_MAX ? 'text-destructive' : 'text-muted-foreground'
-          }`}
-        >
-          {content.length}/{MESSAGE_MAX}
-        </p>
-      )}
       <div className="flex items-end gap-2">
-        <div ref={pickerRef} className="relative">
-          <button
-            type="button"
-            onClick={() => setPickerOpen((open) => !open)}
-            aria-label="Add emoji"
-            aria-expanded={pickerOpen}
-            className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <Smile className="size-5" />
-          </button>
-          {pickerOpen && (
-            <div className="absolute bottom-full left-0 z-20 mb-2">
-              <EmojiPicker onSelect={insertEmoji} />
-            </div>
+        <div className="flex-1">
+          <textarea
+            value={content}
+            onChange={(e) => {
+              setContent(e.target.value);
+              onTyping?.();
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Write a message..."
+            rows={1}
+            maxLength={MAX_LENGTH}
+            className="max-h-32 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none"
+          />
+          {content.length > 0 && (
+            <p
+              className={`mt-1 text-right text-xs ${
+                remaining <= 0 ? 'text-destructive' : 'text-muted-foreground'
+              }`}
+            >
+              {content.length}/{MAX_LENGTH}
+            </p>
           )}
         </div>
-        <textarea
-          ref={textareaRef}
-          maxLength={MESSAGE_MAX}
-          value={content}
-          onChange={(e) => {
-            setContent(e.target.value);
-            onTyping?.();
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder="Write a message..."
-          rows={1}
-          className="max-h-32 flex-1 resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none"
-        />
         <Button type="submit" size="icon" disabled={sending || !content.trim()}>
           <Send className="size-4" />
         </Button>
