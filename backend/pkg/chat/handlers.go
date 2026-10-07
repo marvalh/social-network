@@ -46,8 +46,9 @@ func SendMessageHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrInvalidBody)
 			return
 		}
-		if req.Content == "" {
-			errors.Handle(w, r, errors.BadRequest("message content required"))
+		content, msgErr := cleanMessage(req.Content)
+		if msgErr != nil {
+			errors.Handle(w, r, msgErr)
 			return
 		}
 
@@ -61,7 +62,7 @@ func SendMessageHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			return
 		}
 
-		chatID, err := queries.InsertMessage(db, senderID, receiverID, req.Content)
+		chatID, err := queries.InsertMessage(db, senderID, receiverID, content)
 		if err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
@@ -71,7 +72,7 @@ func SendMessageHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			ChatID:     chatID,
 			SenderID:   senderID,
 			ReceiverID: receiverID,
-			Content:    req.Content,
+			Content:    content,
 			CreatedAt:  time.Now(),
 		}
 		hub.SendToUser(receiverID, message)
@@ -131,12 +132,13 @@ func SendGroupMessageHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrInvalidBody)
 			return
 		}
-		if req.Content == "" {
-			errors.Handle(w, r, errors.BadRequest("message content required"))
+		content, msgErr := cleanMessage(req.Content)
+		if msgErr != nil {
+			errors.Handle(w, r, msgErr)
 			return
 		}
 
-		chatID, err := queries.InsertGroupMessage(db, groupID, senderID, req.Content)
+		chatID, err := queries.InsertGroupMessage(db, groupID, senderID, content)
 		if err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
@@ -146,7 +148,7 @@ func SendGroupMessageHandler(db *sql.DB, hub *ws.Hub) http.HandlerFunc {
 			ChatID:    chatID,
 			SenderID:  senderID,
 			GroupID:   groupID,
-			Content:   req.Content,
+			Content:   content,
 			CreatedAt: time.Now(),
 		}
 
@@ -224,7 +226,7 @@ func SearchUsersInChatHandler(db *sql.DB) http.HandlerFunc {
 
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
 		if query == "" {
-			helpers.SendJSON(w, http.StatusOK, map[string]any{"users": []models.UserResponse{}})
+			helpers.SendJSON(w, http.StatusOK, map[string]any{"users": []models.UserPreview{}})
 			return
 		}
 
@@ -234,9 +236,9 @@ func SearchUsersInChatHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		results := make([]models.UserResponse, 0, len(users))
+		results := make([]models.UserPreview, 0, len(users))
 		for _, u := range users {
-			results = append(results, u.Sanitize())
+			results = append(results, u.Preview())
 		}
 
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"users": results})

@@ -11,11 +11,11 @@ type Follow struct {
 	FolloweeID string       `json:"followeeId"`
 	Status     string       `json:"status"`
 	CreatedAt  time.Time    `json:"createdAt"`
-	UpdatedAt  sql.NullTime `json:"-"` //marked as - cuz its unused for now
+	UpdatedAt  sql.NullTime `json:"-"`
 }
 
 type PendingRequest struct {
-	RequestID string       `json:"requestId"`
-	User      UserResponse `json:"user"` //might change userresponse since it shows full user data (unnecessary)
-	CreatedAt time.Time    `json:"createdAt"`
+	RequestID string      `json:"requestId"`
+	User      UserPreview `json:"user"`
+	CreatedAt time.Time   `json:"createdAt"`
 }

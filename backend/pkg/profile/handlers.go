@@ -133,7 +133,7 @@ func SearchUsersHandler(db *sql.DB) http.HandlerFunc {
 
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
 		if query == "" {
-			helpers.SendJSON(w, http.StatusOK, map[string]any{"users": []models.UserResponse{}})
+			helpers.SendJSON(w, http.StatusOK, map[string]any{"users": []models.UserPreview{}})
 			return
 		}
 
@@ -143,9 +143,9 @@ func SearchUsersHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		results := make([]models.UserResponse, 0, len(users))
+		results := make([]models.UserPreview, 0, len(users))
 		for _, u := range users {
-			results = append(results, u.Sanitize())
+			results = append(results, u.Preview())
 		}
 
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"users": results})
@@ -166,19 +166,19 @@ func SuggestedUsersHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		results := make([]models.UserResponse, 0, len(users))
+		results := make([]models.UserPreview, 0, len(users))
 		for _, u := range users {
-			results = append(results, u.Sanitize())
+			results = append(results, u.Preview())
 		}
 
 		helpers.SendJSON(w, http.StatusOK, map[string]any{"users": results})
 	}
 }
 
-func sanitizeAll(users []models.User) []models.UserResponse {
-	out := make([]models.UserResponse, 0, len(users))
+func sanitizeAll(users []models.User) []models.UserPreview {
+	out := make([]models.UserPreview, 0, len(users))
 	for _, u := range users {
-		out = append(out, u.Sanitize())
+		out = append(out, u.Preview())
 	}
 	return out
 }

@@ -47,6 +47,28 @@ func (u *User) Sanitize() UserResponse {
 	}
 }
 
+// UserPreview is the only shape other people ever see in lists and search
+// results. No email, date of birth, bio or join date.
+type UserPreview struct {
+	UserID    string `json:"userId"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Avatar    string `json:"avatar,omitempty"`
+	Nickname  string `json:"nickname,omitempty"`
+	IsPublic  bool   `json:"isPublic"`
+}
+
+func (u *User) Preview() UserPreview {
+	return UserPreview{
+		UserID:    u.UserID,
+		FirstName: u.FirstName,
+		LastName:  u.LastName,
+		Avatar:    u.Avatar.String,
+		Nickname:  u.Nickname.String,
+		IsPublic:  u.IsPublic,
+	}
+}
+
 type RegisterRequest struct {
 	Email     string `json:"email"`
 	Password  string `json:"password"`

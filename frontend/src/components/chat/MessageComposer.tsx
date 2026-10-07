@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { Send, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/src/services/api';
+import { MESSAGE_MAX } from '@/src/utils/validation';
 import { EmojiPicker } from './EmojiPicker';
 
 interface MessageComposerProps {
@@ -62,7 +63,7 @@ export function MessageComposer({ onSend, onTyping }: MessageComposerProps) {
     const el = textareaRef.current;
     const start = el?.selectionStart ?? content.length;
     const end = el?.selectionEnd ?? content.length;
-    setContent(content.slice(0, start) + emoji + content.slice(end));
+    setContent((content.slice(0, start) + emoji + content.slice(end)).slice(0, MESSAGE_MAX));
     onTyping?.();
     requestAnimationFrame(() => {
       el?.focus();
@@ -74,6 +75,15 @@ export function MessageComposer({ onSend, onTyping }: MessageComposerProps) {
   return (
     <form onSubmit={handleSubmit} className="border-t border-border p-3">
       {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
+      {content.length >= MESSAGE_MAX - 200 && (
+        <p
+          className={`mb-2 text-right text-xs ${
+            content.length >= MESSAGE_MAX ? 'text-destructive' : 'text-muted-foreground'
+          }`}
+        >
+          {content.length}/{MESSAGE_MAX}
+        </p>
+      )}
       <div className="flex items-end gap-2">
         <div ref={pickerRef} className="relative">
           <button
@@ -93,6 +103,7 @@ export function MessageComposer({ onSend, onTyping }: MessageComposerProps) {
         </div>
         <textarea
           ref={textareaRef}
+          maxLength={MESSAGE_MAX}
           value={content}
           onChange={(e) => {
             setContent(e.target.value);

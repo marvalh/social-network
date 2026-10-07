@@ -120,7 +120,7 @@ func ListPendingRequests(db *sql.DB, userID string) ([]models.PendingRequest, er
 			&u.Avatar, &u.Nickname, &u.AboutMe, &u.IsPublic, &u.CreatedAt); err != nil {
 			return nil, err
 		}
-		pr.User = u.Sanitize()
+		pr.User = u.Preview()
 		requests = append(requests, pr)
 	}
 	return requests, rows.Err()

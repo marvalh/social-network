@@ -24,7 +24,7 @@ func CreateUser(db *sql.DB, u models.User) (string, error) {
 
 func EmailExists(db *sql.DB, email string) (bool, error) {
 	var exists int
-	err := db.QueryRow(`SELECT 1 FROM users WHERE email = ?`, email).Scan(&exists)
+	err := db.QueryRow(`SELECT 1 FROM users WHERE email = ? COLLATE NOCASE`, email).Scan(&exists)
 	if err == sql.ErrNoRows {
 		return false, nil
 	}
@@ -45,7 +45,7 @@ func GetUserByEmail(db *sql.DB, email string) (*models.User, error) {
 	err := db.QueryRow(
 		`SELECT user_id, email, password, first_name, last_name, dob,
 		        avatar, nickname, abt_me, is_public, created_at
-		 FROM users WHERE email = ?`,
+		 FROM users WHERE email = ? COLLATE NOCASE`,
 		email,
 	).Scan(&u.UserID, &u.Email, &u.Password, &u.FirstName, &u.LastName, &u.DOB,
 		&u.Avatar, &u.Nickname, &u.AboutMe, &u.IsPublic, &u.CreatedAt)

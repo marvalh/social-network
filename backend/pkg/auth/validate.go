@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 )
 
 var emailPattern = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
@@ -19,14 +20,17 @@ const (
 	nicknameMinLen = 3
 	nicknameMaxLen = 13
 
-	aboutMeMinLen = 3
 	aboutMeMaxLen = 100
 )
+
+func NormalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
 
 func ValidateRegisterRequest(req *models.RegisterRequest) error {
 	req.FirstName = strings.TrimSpace(req.FirstName)
 	req.LastName = strings.TrimSpace(req.LastName)
-	req.Email = strings.TrimSpace(req.Email)
+	req.Email = NormalizeEmail(req.Email)
 	req.DOB = strings.TrimSpace(req.DOB)
 	req.Nickname = strings.TrimSpace(req.Nickname)
 	req.AboutMe = strings.TrimSpace(req.AboutMe)
@@ -105,10 +109,7 @@ func ValidateAboutMe(aboutMe string) error {
 	if aboutMe == "" {
 		return nil
 	}
-	if len(aboutMe) < aboutMeMinLen {
-		return errors.New("About me must be at least 3 characters")
-	}
-	if len(aboutMe) > aboutMeMaxLen {
+	if utf8.RuneCountInString(aboutMe) > aboutMeMaxLen {
 		return errors.New("About me must be at most 100 characters")
 	}
 	for _, c := range aboutMe {

@@ -1,6 +1,6 @@
 export const NICKNAME_MIN = 3;
 export const NICKNAME_MAX = 13;
-export const ABOUT_ME_MIN = 3;
+export const MESSAGE_MAX = 1000;
 export const ABOUT_ME_MAX = 100;
 export const PASSWORD_MIN = 8;
 export const PASSWORD_SPECIALS = '!@#$%&()*_';
@@ -68,9 +68,7 @@ export function validateAboutMe(aboutMe: string): string | null {
   if (aboutMe === '') {
     return null;
   }
-  if (aboutMe.length < ABOUT_ME_MIN) {
-    return `About me must be at least ${ABOUT_ME_MIN} characters`;
-  }
+
   if (aboutMe.length > ABOUT_ME_MAX) {
     return `About me must be at most ${ABOUT_ME_MAX} characters`;
   }

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"social-network-test/pkg/db/queries"
-	"social-network-test/pkg/models"
 	"social-network-test/pkg/errors"
+	"social-network-test/pkg/models"
 	"time"
 )
 
@@ -60,7 +60,7 @@ func LoginHandler(db *sql.DB) http.HandlerFunc {
 		var req models.LoginRequest
 		json.NewDecoder(r.Body).Decode(&req)
 
-		user, err := queries.GetUserByEmail(db, req.Identifier)
+		user, err := queries.GetUserByEmail(db, NormalizeEmail(req.Identifier))
 		if err != nil {
 			user, err = queries.GetUserByNickname(db, req.Identifier)
 		}
