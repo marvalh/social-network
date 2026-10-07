@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PostCard } from '@/src/components/feed/PostCard';
 import { PostComposer } from '@/src/components/feed/PostComposer';
 import { useSocket } from '@/src/context/Socket';
+import { useInfiniteScroll } from '@/src/hooks/useInfiniteScroll';
 import { ApiError, postsApi } from '@/src/services/api';
 import { isPostRealtimeEvent, type Post } from '@/src/types/post';
 
@@ -16,7 +17,10 @@ export function GroupPosts({ groupId }: { groupId: string }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
+  const footerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     postsApi
@@ -60,8 +64,11 @@ export function GroupPosts({ groupId }: { groupId: string }) {
   );
 
   async function loadMore() {
-    if (loadingMore || !hasMore) return;
+    if (loadingRef.current || !hasMore) return;
+    loadingRef.current = true;
     setLoadingMore(true);
+    setLoadFailed(false);
+    setError(null);
     try {
       const more = await postsApi.groupPosts(groupId, posts.length);
       setPosts((current) => {
@@ -71,10 +78,18 @@ export function GroupPosts({ groupId }: { groupId: string }) {
       setHasMore(more.length === PAGE_SIZE);
     } catch {
       setError('We could not load more posts.');
+      setLoadFailed(true);
     } finally {
+      loadingRef.current = false;
       setLoadingMore(false);
     }
   }
+
+  useInfiniteScroll({
+    onLoadMore: loadMore,
+    enabled: !loading && posts.length > 0 && hasMore && !loadingMore && !loadFailed,
+    anchorRef: footerRef,
+  });
 
   function handleCreated(post: Post) {
     setPosts((current) => [post, ...current.filter((p) => p.postId !== post.postId)]);
@@ -115,11 +130,17 @@ export function GroupPosts({ groupId }: { groupId: string }) {
               />
             ))}
             {hasMore && (
-              <div className="p-5 text-center">
-                <Button variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
-                  {loadingMore ? 'Loading...' : 'Load more'}
-                </Button>
-                {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+              <div ref={footerRef} className="p-5 text-center text-sm text-muted-foreground">
+                {loadFailed ? (
+                  <>
+                    <p className="text-destructive">{error}</p>
+                    <Button variant="outline" size="sm" className="mt-2" onClick={loadMore}>
+                      Try again
+                    </Button>
+                  </>
+                ) : (
+                  loadingMore && 'Loading more...'
+                )}
               </div>
             )}
           </>

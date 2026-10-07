@@ -1,26 +1,30 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/src/context/Auth';
 import { useSocket } from '@/src/context/Socket';
 import { ApiError, postsApi } from '@/src/services/api';
+import { useInfiniteScroll } from '@/src/hooks/useInfiniteScroll';
 import { isFollowRealtimeEvent, isPostRealtimeEvent, type Post } from '@/src/types/post';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
 import { PostCard } from './PostCard';
 import { PostComposer } from './PostComposer';
+
+const PAGE_SIZE = 20;
 
 export function FeedPage() {
   const { user, loading } = useAuth();
   const { subscribe } = useSocket();
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
-  const [loadedRows, setLoadedRows] = useState(0);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -32,8 +36,7 @@ export function FeedPage() {
       .feed()
       .then((initial) => {
         setPosts(initial);
-        setLoadedRows(initial.length);
-        setHasMore(initial.length === 20);
+        setHasMore(initial.length === PAGE_SIZE);
       })
       .catch(() => setError('We could not load your feed.'))
       .finally(() => setLoadingPosts(false));
@@ -74,22 +77,31 @@ export function FeedPage() {
   );
 
   async function loadMore() {
-    if (loadingMore || !hasMore) return;
+    if (loadingRef.current || !hasMore) return;
+    loadingRef.current = true;
     setLoadingMore(true);
+    setLoadFailed(false);
+    setError(null);
     try {
-      const more = await postsApi.feed(loadedRows);
+      const more = await postsApi.feed(posts.length);
       setPosts((current) => {
         const existingIds = new Set(current.map((post) => post.postId));
         return [...current, ...more.filter((post) => !existingIds.has(post.postId))];
       });
-      setLoadedRows((current) => current + more.length);
-      setHasMore(more.length === 20);
+      setHasMore(more.length === PAGE_SIZE);
     } catch {
       setError('We could not load more posts.');
+      setLoadFailed(true);
     } finally {
+      loadingRef.current = false;
       setLoadingMore(false);
     }
   }
+
+  useInfiniteScroll({
+    onLoadMore: loadMore,
+    enabled: !loadingPosts && posts.length > 0 && hasMore && !loadingMore && !loadFailed,
+  });
 
   function handleUpdated(updated: Post) {
     setPosts((current) => current.map((post) => (post.postId === updated.postId ? updated : post)));
@@ -135,11 +147,17 @@ export function FeedPage() {
               />
             ))}
             {hasMore && (
-              <div className="p-5 text-center">
-                <Button variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
-                  {loadingMore ? 'Loading...' : 'Load more'}
-                </Button>
-                {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+              <div className="p-5 text-center text-sm text-muted-foreground">
+                {loadFailed ? (
+                  <>
+                    <p className="text-destructive">{error}</p>
+                    <Button variant="outline" size="sm" className="mt-2" onClick={loadMore}>
+                      Try again
+                    </Button>
+                  </>
+                ) : (
+                  loadingMore && 'Loading more...'
+                )}
               </div>
             )}
           </>
