@@ -98,9 +98,9 @@ export function ProfileHeader({
       </div>
 
       <div className="px-5 pb-0 sm:px-8">
-        <div className="-mt-14 flex flex-col gap-4 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-end gap-4">
-            <div className="relative">
+            <div className="relative -mt-14 sm:-mt-16">
               <Avatar user={user} size="lg" className="ring-4 ring-card" />
 
               {isOwner && (
@@ -129,7 +129,7 @@ export function ProfileHeader({
               )}
             </div>
 
-            <div className="pb-1">
+            <div className="pb-1 pt-3">
               <h1 className="text-2xl font-semibold">
                 {user.firstName} {user.lastName}
               </h1>
@@ -230,9 +230,8 @@ export function ProfileHeader({
                   type="button"
                   onClick={() => onTabChange(tab.key)}
                   aria-current={active ? 'page' : undefined}
-                  className={`relative px-4 py-3 text-sm font-medium transition-colors ${
-                    active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`relative px-4 py-3 text-sm font-medium transition-colors ${active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   {tab.label}
                   <span className="ml-1.5 text-xs text-muted-foreground">{tab.count}</span>

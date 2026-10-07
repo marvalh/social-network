@@ -104,6 +104,12 @@ func GetProfileHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+				for i := range posts {
+			if posts[i].Img != "" {
+				posts[i].Img = "/api/images/posts/" + posts[i].Img
+			}
+		}
+
 		resp.User = target.Sanitize()
 		resp.FollowerCount = followerCount
 		resp.FollowingCount = followingCount
