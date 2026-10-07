@@ -63,7 +63,7 @@ export function Topbar() {
           social-network
         </Link>
 
-        <div ref={searchRef} className="relative hidden max-w-sm flex-1 md:block">
+        <div ref={searchRef} className="relative max-w-sm flex-1">
           <div className="flex items-center rounded-lg border border-border bg-surface px-3 text-muted-foreground">
             <Search className="size-4 shrink-0" />
             <input
