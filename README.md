@@ -20,36 +20,6 @@ A Facebook-style social network built with a **Go** REST API + **SQLite** backen
 | Frontend | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui |
 | Infra    | Docker (separate backend/frontend images), SQL migrations |
 
-## Project Structure
-
-```text
-social-network/
-├── backend/
-│   ├── pkg/
-│   │   ├── auth/           # sessions, cookies, bcrypt
-│   │   ├── follow/         # follow requests, followers/following
-│   │   ├── profile/        # profile read/update, avatar
-│   │   ├── posts/          # posts, comments, likes
-│   │   ├── groups/         # groups, invites, join requests, events
-│   │   ├── chat/           # private + group messaging
-│   │   ├── notifications/  # notification feed
-│   │   ├── ws/             # WebSocket hub
-│   │   └── db/
-│   │       ├── migrations/sqlite/
-│   │       └── queries/
-│   ├── server.go
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   │   ├── app/            # routes/pages
-│   │   ├── components/
-│   │   ├── services/       # API clients
-│   │   ├── types/
-│   │   └── hooks/
-│   └── Dockerfile
-└── docker-compose.yml
-```
-
 ## Getting Started
 
 ### Backend
@@ -72,6 +42,138 @@ npm run dev     # serves on :3000
 ```bash
 docker compose up --build
 ```
+
+## Project Structure
+ 
+```text
+social-network/
+├── backend/
+│   ├── cmd/
+│   │   └── seed/
+│   ├── data/
+│   ├── pkg/
+│   │   ├── auth/
+│   │   ├── chat/
+│   │   ├── db/
+│   │   │   ├── migrations/sqlite/
+│   │   │   ├── queries/
+│   │   │   └── sqlite/
+│   │   ├── errors/
+│   │   ├── follow/
+│   │   ├── groups/
+│   │   ├── helpers/
+│   │   ├── images/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   ├── notifications/
+│   │   ├── posts/
+│   │   ├── profile/
+│   │   ├── router/
+│   │   └── ws/
+│   ├── server.go
+│   └── Dockerfile
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── (auth)/
+│   │   │   │   ├── login/
+│   │   │   │   └── register/
+│   │   │   └── (main)/
+│   │   │       ├── follow/
+│   │   │       ├── groups/
+│   │   │       │   ├── invites/
+│   │   │       │   ├── new/
+│   │   │       │   └── [id]/
+│   │   │       │       ├── chat/
+│   │   │       │       └── events/
+│   │   │       ├── home/
+│   │   │       ├── messages/
+│   │   │       │   └── [userId]/
+│   │   │       ├── notifications/
+│   │   │       ├── people/
+│   │   │       ├── posts/
+│   │   │       │   └── [id]/
+│   │   │       └── profile/
+│   │   │           └── [id]/
+│   │   ├── components/
+│   │   │   ├── auth/
+│   │   │   ├── chat/
+│   │   │   ├── feed/
+│   │   │   ├── follow/
+│   │   │   ├── form/
+│   │   │   ├── groups/
+│   │   │   ├── layout/
+│   │   │   ├── notifications/
+│   │   │   └── profile/
+│   │   ├── context/
+│   │   ├── css/
+│   │   ├── docs/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   ├── types/
+│   │   └── utils/
+│   └── Dockerfile
+└── docker-compose.yml
+```
+ 
+### Backend folders
+ 
+| Folder | Purpose |
+|--------|---------|
+| `cmd/seed` | Standalone script (`go run ./cmd/seed`) that populates the database with dummy users, posts, groups, and messages so the app has real data to click through |
+| `data` | Where the SQLite `.db` file is created and lives at runtime |
+| `pkg/auth` | Login/register logic, session cookies, password hashing |
+| `pkg/chat` | Private messages and group chat — HTTP handlers and request/response logic |
+| `pkg/db/migrations/sqlite` | Versioned `.up.sql`/`.down.sql` files that create and evolve the database schema |
+| `pkg/db/queries` | All raw SQL — every `SELECT`/`INSERT`/`UPDATE`/`DELETE` the app runs, grouped by feature (`user.go`, `follow.go`, `posts.go`, `group.go`, etc.) |
+| `pkg/db/sqlite` | Opens the database connection and runs pending migrations on startup |
+| `pkg/errors` | Shared HTTP error helpers (404, 401, 409, 500, etc.) so every handler responds consistently |
+| `pkg/follow` | Follow/unfollow, follow requests, followers and following lists |
+| `pkg/groups` | Groups, invites, join requests, membership, and events |
+| `pkg/helpers` | Small shared utilities (e.g. sending JSON responses) |
+| `pkg/images` | Avatar and post image upload/validation handling |
+| `pkg/middleware` | Request middleware — auth checks, logging, etc. run before handlers |
+| `pkg/models` | Go structs representing database rows and API request/response shapes |
+| `pkg/notifications` | Creating and listing in-app notifications |
+| `pkg/posts` | Posts, comments, likes, and the home feed |
+| `pkg/profile` | Reading and updating a user's profile, including visibility (public/private) |
+| `pkg/router` | Wires every URL path to its handler — the single source of truth for the API surface |
+| `pkg/ws` | The WebSocket hub — tracks connected users and pushes real-time events to them |
+ 
+### Frontend folders
+ 
+| Folder | Purpose |
+|--------|---------|
+| `public` | Static assets served as-is (favicon, images, etc.) |
+| `src/app/(auth)` | Login and register pages — a route group kept separate from the logged-in app shell |
+| `src/app/(auth)/login` | The login page |
+| `src/app/(auth)/register` | The registration page |
+| `src/app/(main)` | Every page behind authentication, sharing the main app layout (sidebar/topbar) |
+| `src/app/(main)/follow` | Follow-requests page |
+| `src/app/(main)/groups` | Browse/your groups page, plus nested routes for invites, creating a group, and a single group's detail/chat/events |
+| `src/app/(main)/home` | The main feed |
+| `src/app/(main)/messages` | Conversations list, plus `[userId]` for an individual direct-message thread |
+| `src/app/(main)/notifications` | Notifications page |
+| `src/app/(main)/people` | Suggested users / people you may know |
+| `src/app/(main)/posts` | `[id]` — a single post's detail page (e.g. opened from a notification) |
+| `src/app/(main)/profile` | `[id]` — a user's profile page |
+| `src/components/auth` | Login/register form components |
+| `src/components/chat` | Conversation list, chat window, message composer |
+| `src/components/feed` | Post card, comment list, post composer |
+| `src/components/follow` | Follow button, follow requests list, people list |
+| `src/components/form` | Shared, generic form building blocks |
+| `src/components/groups` | Group cards, member list, invite UI, event RSVP UI |
+| `src/components/layout` | App-wide chrome — topbar, sidebar, modals, spinners |
+| `src/components/notifications` | Notification bell and notification list items |
+| `src/components/profile` | Profile header, avatar, bio/edit UI |
+| `src/context` | React context providers (auth state, unread counts, etc.) shared across the app |
+| `src/css` | Global stylesheet and design tokens |
+| `src/docs` | Project notes/documentation kept alongside the code |
+| `src/hooks` | Shared custom hooks (`useRequireAuth`, `useLive`, etc.) |
+| `src/services` | One file per API area — thin wrappers around `fetch` that call the backend |
+| `src/types` | Shared TypeScript types matching the backend's JSON responses |
+| `src/utils` | Small shared helper functions (validation, formatting, etc.) |
 
 ## API Overview
 

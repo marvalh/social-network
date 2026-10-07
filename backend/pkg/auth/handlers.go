@@ -25,7 +25,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 
 		exists, _ := queries.EmailExists(db, req.Email)
 		if exists {
-			errors.Handle(w, r, errors.Conflict("Email already registered"))
+			errors.Handle(w, r, errors.ErrConflict)
 			return
 		}
 
