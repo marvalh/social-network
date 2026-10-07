@@ -136,9 +136,9 @@ func GetFollowingHandler(db *sql.DB) http.HandlerFunc {
 			errors.Handle(w, r, errors.ErrServerError)
 			return
 		}
-		response := make([]models.UserResponse, len(users))
+		response := make([]models.UserPreview, len(users))
 		for i, u := range users {
-			response[i] = u.Sanitize()
+			response[i] = u.Preview()
 		}
 
 		helpers.SendJSON(w, http.StatusOK, map[string]any{
