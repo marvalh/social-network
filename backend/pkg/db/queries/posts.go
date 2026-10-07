@@ -86,8 +86,11 @@ func ListPostAudience(db *sql.DB, postID string) ([]string, error) {
 		query = `SELECT follower_id FROM follows WHERE followee_id = ? AND status = 'accepted'`
 		args = append(args, ownerID)
 	case privacy == models.PrivacyPrivate:
-		query = `SELECT user_id FROM post_visible_to WHERE post_id = ?`
-		args = append(args, postID)
+		query = `SELECT v.user_id FROM post_visible_to v
+		         JOIN follows f ON f.follower_id = v.user_id
+		         AND f.followee_id = ? AND f.status = 'accepted'
+		         WHERE v.post_id = ?`
+		args = append(args, ownerID, postID)
 	}
 
 	rows, err := db.Query(query, args...)
@@ -124,8 +127,12 @@ func CanViewPost(db *sql.DB, viewerID string, p *models.Post) (bool, error) {
 	case models.PrivacyFollowers:
 		return IsFollowing(db, viewerID, p.UserID)
 	case models.PrivacyPrivate:
+		following, err := IsFollowing(db, viewerID, p.UserID)
+		if err != nil || !following {
+			return false, err
+		}
 		var exists int
-		err := db.QueryRow(
+		err = db.QueryRow(
 			`SELECT 1 FROM post_visible_to WHERE post_id = ? AND user_id = ?`,
 			p.PostID, viewerID,
 		).Scan(&exists)
@@ -211,14 +218,18 @@ func GetUserPosts(db *sql.DB, profileUserID, viewerID string, limit, offset int)
 			OR (p.privacy = 'followers' AND p.user_id IN (
 				SELECT followee_id FROM follows WHERE follower_id = ? AND status = 'accepted'
 			))
-			OR (p.privacy = 'private' AND p.post_id IN (
-				SELECT post_id FROM post_visible_to WHERE user_id = ?
-			))
+			OR (p.privacy = 'private'
+				AND p.user_id IN (
+					SELECT followee_id FROM follows WHERE follower_id = ? AND status = 'accepted'
+				)
+				AND p.post_id IN (
+					SELECT post_id FROM post_visible_to WHERE user_id = ?
+				))
 		)
 		ORDER BY p.created_at DESC
 		LIMIT ? OFFSET ?
 	`
-	rows, err := db.Query(query, viewerID, profileUserID, viewerID, viewerID, viewerID, limit, offset)
+	rows, err := db.Query(query, viewerID, profileUserID, viewerID, viewerID, viewerID, viewerID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

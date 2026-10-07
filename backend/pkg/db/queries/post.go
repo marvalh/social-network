@@ -15,12 +15,12 @@ func ListProfilePosts(db *sql.DB, ownerID, viewerID string, isOwner, viewerFollo
 		        ?
 		        OR privacy = 'public'
 		        OR (privacy = 'followers' AND ?)
-		        OR (privacy = 'private' AND post_id IN (
+		        OR (privacy = 'private' AND ? AND post_id IN (
 		              SELECT post_id FROM post_visible_to WHERE user_id = ?
 		        ))
 		   )
 		 ORDER BY created_at DESC`,
-		ownerID, isOwner, viewerFollowsOwner, viewerID,
+		ownerID, isOwner, viewerFollowsOwner, viewerFollowsOwner, viewerID,
 	)
 	if err != nil {
 		return nil, err

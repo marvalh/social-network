@@ -1,7 +1,9 @@
 'use client';
 
 import { use, useState } from 'react';
+import { UserMinus, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/src/components/layout/ConfirmDialog';
 import { FullPageSpinner } from '@/src/components/layout/FullPageSpinner';
 import { StatusError } from '@/src/components/layout/StatusError';
 import { ChangePasswordModal } from '@/src/components/profile/ChangePasswordModal';
@@ -23,7 +25,11 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [tab, setTab] = useState<TabKey>('posts');
   const [editing, setEditing] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
-  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{ kind: 'remove' | 'unfollow'; person: User } | null>(
+    null
+  );
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   if (checking || loading) {
     return <FullPageSpinner />;
@@ -45,13 +51,27 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     patch({ user: { ...user, ...updated } });
   }
 
-  async function removeFollower(follower: User) {
-    setRemoveError(null);
+  function closeConfirm() {
+    setConfirm(null);
+    setConfirmError(null);
+  }
+
+  async function runConfirmed() {
+    if (!confirm) return;
+    setConfirmBusy(true);
+    setConfirmError(null);
     try {
-      await followApi.removeFollower(follower.userId);
+      if (confirm.kind === 'remove') {
+        await followApi.removeFollower(confirm.person.userId);
+      } else {
+        await followApi.unfollow(confirm.person.userId);
+      }
       await refresh();
+      setConfirm(null);
     } catch (err) {
-      setRemoveError(err instanceof ApiError ? err.message : 'Could not reach the server.');
+      setConfirmError(err instanceof ApiError ? err.message : 'Could not reach the server.');
+    } finally {
+      setConfirmBusy(false);
     }
   }
 
@@ -74,12 +94,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         <PrivateNotice firstName={user.firstName} />
       ) : (
         <>
-          {removeError && (
-            <p role="alert" className="text-sm text-destructive">
-              {removeError}
-            </p>
-          )}
-
           {tab === 'posts' && (
             <div className="space-y-4">
               {(profile.posts ?? []).length === 0 ? (
@@ -105,7 +119,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => removeFollower(follower)}
+                          onClick={() => setConfirm({ kind: 'remove', person: follower })}
                           className="text-muted-foreground"
                         >
                           Remove
@@ -124,11 +138,52 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 emptyMessage={
                   isOwner ? "You aren't following anyone yet." : 'Not following anyone yet.'
                 }
+                action={
+                  isOwner
+                    ? (person) => (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setConfirm({ kind: 'unfollow', person })}
+                          className="text-muted-foreground"
+                        >
+                          Unfollow
+                        </Button>
+                      )
+                    : undefined
+                }
               />
             </div>
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={confirm !== null}
+        title={
+          confirm
+            ? confirm.kind === 'remove'
+              ? `Remove ${confirm.person.firstName} ${confirm.person.lastName}?`
+              : `Unfollow ${confirm.person.firstName} ${confirm.person.lastName}?`
+            : ''
+        }
+        icon={
+          confirm?.kind === 'remove' ? (
+            <UserX className="size-5" />
+          ) : (
+            <UserMinus className="size-5" />
+          )
+        }
+        confirmLabel={confirm?.kind === 'remove' ? 'Remove' : 'Unfollow'}
+        busy={confirmBusy}
+        error={confirmError}
+        onConfirm={runConfirmed}
+        onCancel={closeConfirm}
+      >
+        {confirm?.kind === 'remove'
+          ? "They'll stop following you and won't see your followers-only posts anymore. They can send a new request later."
+          : "You'll stop seeing their posts in your feed. If their profile is private, you'd need to send a new request to follow them again."}
+      </ConfirmDialog>
 
       {isOwner && (
         <>
