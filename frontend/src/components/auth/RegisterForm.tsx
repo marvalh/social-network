@@ -7,12 +7,15 @@ import { Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/src/components/form/DatePicker';
 import { ApiError } from '@/src/services/api';
 import { useAuth } from '@/src/context/Auth';
 import { profileApi } from '@/src/services/profile';
 import { AuthHeading, CharCount, FormError } from './Authformparts';
 import {
   ABOUT_ME_MAX,
+  MAX_AGE,
+  MIN_AGE,
   NICKNAME_MAX,
   PASSWORD_SPECIALS,
   validateAboutMe,
@@ -21,6 +24,13 @@ import {
   validateNickname,
   validatePassword,
 } from '@/src/utils/validation';
+
+function dobBounds() {
+  const now = new Date();
+  const yearsAgo = (years: number) =>
+    new Date(now.getFullYear() - years, now.getMonth(), now.getDate());
+  return { min: yearsAgo(MAX_AGE), max: yearsAgo(MIN_AGE), start: yearsAgo(20) };
+}
 
 export function RegisterForm() {
   const { register, login } = useAuth();
@@ -39,6 +49,7 @@ export function RegisterForm() {
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const bounds = dobBounds();
 
   useEffect(() => {
     if (!avatar) {
@@ -237,16 +248,22 @@ export function RegisterForm() {
           <Label htmlFor="dob" className="text-muted-foreground">
             Date of birth
           </Label>
-          <Input
+          <DatePicker
             id="dob"
-            name="dob"
-            type="date"
-            autoComplete="bday"
             value={dob}
-            onChange={(e) => setDob(e.target.value)}
-            className="field"
-            required
+            onChange={(next) => {
+              setDob(next);
+              if (error) setError(null);
+            }}
+            minDate={bounds.min}
+            maxDate={bounds.max}
+            startDate={bounds.start}
+            placeholder="Pick your date of birth"
+            large
           />
+          <p className="text-xs text-muted-foreground">
+            You need to be at least {MIN_AGE} to join.
+          </p>
         </div>
 
         <div className="space-y-1.5">

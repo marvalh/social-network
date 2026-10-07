@@ -3,6 +3,7 @@
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/src/components/form/Select';
 import { useAuth } from '@/src/context/Auth';
 import { ApiError, postsApi } from '@/src/services/api';
 import type { Post, PostPrivacy } from '@/src/types/post';
@@ -11,11 +12,11 @@ import { mediaUrl } from '@/src/utils/media';
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
 
-const PRIVACY_LABEL: Record<PostPrivacy, string> = {
-  public: 'Anyone',
-  followers: 'Almost private',
-  private: 'Selected followers',
-};
+const PRIVACY_OPTIONS: { value: PostPrivacy; label: string; description: string }[] = [
+  { value: 'public', label: 'Anyone', description: 'Everyone on the network can see it' },
+  { value: 'followers', label: 'Almost private', description: 'Only people who follow you' },
+  { value: 'private', label: 'Selected followers', description: 'Only the followers you pick' },
+];
 
 interface PostComposerProps {
   onCreated: (post: Post) => void;
@@ -259,25 +260,19 @@ export function PostComposer({ onCreated, groupId }: PostComposerProps) {
 
             <div className="flex items-center gap-2 sm:justify-end">
               {!groupId && (
-                <select
+                <Select
+                  ariaLabel="Post privacy"
                   value={privacy}
-                  onChange={(event) => {
-                    const nextPrivacy = event.target.value as PostPrivacy;
+                  options={PRIVACY_OPTIONS}
+                  align="right"
+                  onChange={(nextPrivacy) => {
                     if (nextPrivacy === 'private') {
                       setLoadingFollowers(true);
                       setFollowerError(null);
                     }
                     setPrivacy(nextPrivacy);
                   }}
-                  aria-label="Post privacy"
-                  className="h-8 rounded-lg border border-border bg-surface px-2 text-xs text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  {(Object.keys(PRIVACY_LABEL) as PostPrivacy[]).map((value) => (
-                    <option key={value} value={value}>
-                      {PRIVACY_LABEL[value]}
-                    </option>
-                  ))}
-                </select>
+                />
               )}
               <Button type="submit" disabled={submitting} className="gradient border-0 text-white">
                 {submitting ? 'Publishing...' : 'Post'}
