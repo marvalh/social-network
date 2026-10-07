@@ -20,8 +20,6 @@ export function CommentItem({ comment, onUpdated, onDeleted }: CommentItemProps)
   const { user } = useAuth();
   const isOwner = user?.userId === comment.userId;
 
-  const [liked, setLiked] = useState(comment.likedByViewer);
-  const [likes, setLikes] = useState(comment.likeCount);
   const [busy, setBusy] = useState(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -47,16 +45,19 @@ export function CommentItem({ comment, onUpdated, onDeleted }: CommentItemProps)
   async function toggleLike() {
     if (busy) return;
     setBusy(true);
-    const nextLiked = !liked;
-    setLiked(nextLiked);
-    setLikes((count) => count + (nextLiked ? 1 : -1));
+    const nextLiked = !comment.likedByViewer;
+    const optimistic = {
+      ...comment,
+      likedByViewer: nextLiked,
+      likeCount: comment.likeCount + (nextLiked ? 1 : -1)
+    };
+    onUpdated(optimistic);
     try {
       await (nextLiked
         ? postsApi.likeComment(comment.commentId)
         : postsApi.unlikeComment(comment.commentId));
     } catch {
-      setLiked(!nextLiked);
-      setLikes((count) => count + (nextLiked ? -1 : 1));
+      onUpdated(comment)
     } finally {
       setBusy(false);
     }
@@ -234,11 +235,11 @@ export function CommentItem({ comment, onUpdated, onDeleted }: CommentItemProps)
           <button
             type="button"
             onClick={toggleLike}
-            aria-pressed={liked}
-            className={`mt-1.5 inline-flex items-center gap-1 text-xs font-medium ${liked ? 'text-rose-400' : 'text-muted-foreground hover:text-foreground'}`}
+            aria-pressed={comment.likedByViewer}
+            className={`mt-1.5 inline-flex items-center gap-1 text-xs font-medium ${comment.likedByViewer ? 'text-rose-400' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            <Heart className={`size-3.5 ${liked ? 'fill-current' : ''}`} />{' '}
-            {likes > 0 ? likes : 'Like'}
+            <Heart className={`size-3.5 ${comment.likedByViewer ? 'fill-current' : ''}`} />{' '}
+            {comment.likeCount > 0 ? comment.likeCount : 'Like'}
           </button>
         )}
       </div>
