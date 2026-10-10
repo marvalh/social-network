@@ -1,19 +1,3 @@
-// Seeds the database with 10 dummy users, follow relationships, posts
-// (every privacy level), two groups with members/invites/events, and
-// a few chat messages — enough to exercise every feature end to end
-// without registering accounts by hand or shipping a prebuilt .db file.
-//
-// This inserts through the app's own query functions at `go run` time,
-// so it works against any fresh database right after migrations run,
-// instead of depending on a specific binary .db file you'd have to keep
-// in sync with your schema.
-//
-// Run from backend/:
-//   go run ./cmd/seed
-//
-// Safe to re-run: user/group creation is skipped (not duplicated) if it
-// already exists; posts/messages are cheap inserts and will duplicate on
-// a second run, so run this once against a fresh database.
 package main
 
 import (
