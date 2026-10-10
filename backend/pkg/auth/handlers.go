@@ -7,6 +7,7 @@ import (
 	"social-network-test/pkg/db/queries"
 	"social-network-test/pkg/errors"
 	"social-network-test/pkg/models"
+	"strings"
 	"time"
 )
 
@@ -29,6 +30,18 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		if req.Nickname != "" {
+			taken, err := queries.NicknameExists(db, req.Nickname)
+			if err != nil {
+				errors.Handle(w, r, errors.ErrServerError)
+				return
+			}
+			if taken {
+				errors.Handle(w, r, errors.Conflict("Nickname already taken"))
+				return
+			}
+		}
+
 		hashed, err := HashPassword(req.Password)
 		if err != nil {
 			errors.Handle(w, r, errors.ErrServerError)
@@ -46,6 +59,14 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 			AboutMe:   sql.NullString{String: req.AboutMe, Valid: req.AboutMe != ""},
 		})
 		if err != nil {
+			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+				if strings.Contains(err.Error(), "nickname") {
+					errors.Handle(w, r, errors.Conflict("Nickname already taken"))
+				} else {
+					errors.Handle(w, r, errors.Conflict("Email already registered"))
+				}
+				return
+			}
 			errors.Handle(w, r, errors.Internal("Failed to create user"))
 			return
 		}

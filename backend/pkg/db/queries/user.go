@@ -33,7 +33,7 @@ func EmailExists(db *sql.DB, email string) (bool, error) {
 
 func NicknameExists(db *sql.DB, nickname string) (bool, error) {
 	var exists int
-	err := db.QueryRow(`SELECT 1 FROM users WHERE nickname = ?`, nickname).Scan(&exists)
+	err := db.QueryRow(`SELECT 1 FROM users WHERE nickname = ? COLLATE NOCASE`, nickname).Scan(&exists)
 	if err == sql.ErrNoRows {
 		return false, nil
 	}
@@ -60,7 +60,7 @@ func GetUserByNickname(db *sql.DB, nickname string) (*models.User, error) {
 	err := db.QueryRow(
 		`SELECT user_id, email, password, first_name, last_name, dob,
 		        avatar, nickname, abt_me, is_public, created_at
-		 FROM users WHERE nickname = ?`,
+		 FROM users WHERE nickname = ? COLLATE NOCASE`,
 		nickname,
 	).Scan(&u.UserID, &u.Email, &u.Password, &u.FirstName, &u.LastName, &u.DOB,
 		&u.Avatar, &u.Nickname, &u.AboutMe, &u.IsPublic, &u.CreatedAt)
@@ -94,7 +94,7 @@ func SetProfileVisibility(db *sql.DB, userID string, isPublic bool) error {
 func NicknameExistsForOther(db *sql.DB, nickname string, excludeUserID string) (bool, error) {
 	var exists int
 	err := db.QueryRow(
-		`SELECT 1 FROM users WHERE nickname = ? AND user_id != ?`,
+		`SELECT 1 FROM users WHERE nickname = ? COLLATE NOCASE AND user_id != ?`,
 		nickname, excludeUserID,
 	).Scan(&exists)
 	if err == sql.ErrNoRows {
